@@ -5,3 +5,4 @@ def assert_campos(objeto, campos):
 def assert_json(resposta):
     assert "application/json" in resposta.headers.get("Content-Type", ""), "Response is not JSON"
     return resposta.json()
+
