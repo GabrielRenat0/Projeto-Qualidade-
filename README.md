@@ -68,12 +68,12 @@ pytest
 
 Para rodar **apenas os testes de sucesso (caminho feliz)**:
 ```bash
-pytest -m valido
+pytest -m valid
 ```
 
 Para rodar **apenas os testes de erro (dados inválidos)**:
 ```bash
-pytest -m invalido
+pytest -m invalid
 ```
 
 Para buscar **um caso de teste específico** (por exemplo, o TC-003):
@@ -88,7 +88,7 @@ pytest -k tc003
 O nosso projeto já está configurado para exportar relatórios formatados da execução de testes.
 Sempre que você executar o comando padrão (`pytest`), o arquivo final será gerado de forma consolidada e autossuficiente (self-contained HTML).
 
-📌 **Onde encontrar o relatório:** `reports/relatorio.html` *(Basta abri-lo no seu navegador favorito)*
+📌 **Onde encontrar o relatório:** `reports/report.html` *(Basta abri-lo no seu navegador favorito)*
 
 ---
 
@@ -98,8 +98,8 @@ Nossos 20 casos de testes automatizados (TC) estão distribuídos em 2 principai
 
 | Cenário de Teste | ID dos Testes | Arquivo Responsável |
 |---|---|---|
-| **Testes com Dados Válidos (Sucesso)** | TC-001 ao TC-010 | `tests/test_dados_validos.py` |
-| **Testes com Dados Inválidos/Inoportunos** | TC-011 ao TC-020 | `tests/test_dados_invalidos.py` |
+| **Testes com Dados Válidos (Sucesso)** | TC-001 ao TC-010 | `tests/test_valid_data.py` |
+| **Testes com Dados Inválidos/Inoportunos** | TC-011 ao TC-020 | `tests/test_invalid_data.py` |
 
 ---
 
