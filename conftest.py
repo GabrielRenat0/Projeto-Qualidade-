@@ -1,10 +1,10 @@
-import json
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any
 
 import pytest
 import requests
+
+from helpers import load_payloads
 
 BASE_URL = "https://jsonplaceholder.typicode.com"
 REQUEST_TIMEOUT_SECONDS = 10
@@ -47,10 +47,7 @@ def api() -> Iterator[APIClient]:
         yield APIClient(session, BASE_URL, timeout=REQUEST_TIMEOUT_SECONDS)
 
 
-@pytest.fixture(scope="session")
-def massa():
-    payloads_path = Path(__file__).parent / "data" / "payloads.json"
-    if payloads_path.exists():
-        with open(payloads_path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+@pytest.fixture
+def payloads() -> dict[str, Any]:
+    """Fresh copy of data/payloads.json for each test, so tests never share data."""
+    return load_payloads()
