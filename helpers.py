@@ -1,8 +1,11 @@
 import copy
 import json
+from collections.abc import Iterable
 from functools import cache
 from pathlib import Path
 from typing import Any
+
+import requests
 
 PAYLOADS_PATH = Path(__file__).resolve().parent / "data" / "payloads.json"
 
@@ -37,11 +40,20 @@ def _read_payloads(path: Path) -> dict[str, Any]:
     return payloads
 
 
-def assert_campos(objeto, campos):
-    for campo in campos:
-        assert campo in objeto, f"Campo '{campo}' não encontrado no objeto"
+def assert_fields(item: dict[str, Any], fields: Iterable[str]) -> None:
+    """Fail listing every expected field that is missing from ``item``."""
+    assert isinstance(item, dict), f"Expected a JSON object, got {type(item).__name__}"
 
-def assert_json(resposta):
-    assert "application/json" in resposta.headers.get("Content-Type", ""), "Response is not JSON"
-    return resposta.json()
+    missing = [field for field in fields if field not in item]
+    assert not missing, f"Missing fields {missing}; available fields: {sorted(item)}"
+
+
+def assert_json(response: requests.Response) -> Any:
+    """Assert that the response declares a JSON body and return it parsed."""
+    content_type = response.headers.get("Content-Type", "")
+    assert "application/json" in content_type, (
+        f"Expected a JSON response, got Content-Type {content_type!r}"
+    )
+
+    return response.json()
 
