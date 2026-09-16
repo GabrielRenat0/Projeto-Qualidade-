@@ -10,6 +10,7 @@ pytestmark = pytest.mark.valid
 
 EXPECTED_POST_COUNT = 100
 POST_FIELDS = ("id", "userId", "title", "body")
+POSTS_PER_USER = 10
 
 
 def test_tc001_list_all_posts(api):
@@ -35,3 +36,19 @@ def test_tc002_get_post_at_valid_boundaries(api, payloads, bound):
     post = assert_json(response)
     assert post["id"] == post_id
     assert_fields(post, POST_FIELDS)
+
+
+def test_tc003_filter_posts_by_user_id(api, payloads):
+    """TC-003 - GET /posts?userId=1 should return only the 10 posts of user 1."""
+    user_filter = payloads["user_posts_filter"]
+
+    response = api.get("/posts", params=user_filter)
+
+    assert response.status_code == HTTPStatus.OK
+    posts = assert_json(response)
+    assert isinstance(posts, list)
+    assert len(posts) == POSTS_PER_USER
+    posts_from_other_users = [
+        post["id"] for post in posts if post["userId"] != user_filter["userId"]
+    ]
+    assert not posts_from_other_users
