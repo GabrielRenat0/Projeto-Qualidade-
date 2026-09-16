@@ -1,5 +1,7 @@
 # Projeto — Testes Automatizados de API
 
+[![API tests](https://github.com/GabrielRenat0/Projeto-Qualidade-/actions/workflows/tests.yml/badge.svg)](https://github.com/GabrielRenat0/Projeto-Qualidade-/actions/workflows/tests.yml)
+
 **Disciplina:** Qualidade de Software  
 **Instituição:** INATEL  
 **Integrantes:**
