@@ -13,6 +13,10 @@ POST_FIELDS = ("id", "userId", "title", "body")
 POSTS_PER_USER = 10
 COMMENT_FIELDS = ("postId", "id", "name", "email", "body")
 COMMENTS_PER_POST = 5
+USER_FIELDS = ("id", "name", "username", "email", "address", "company")
+ADDRESS_FIELDS = ("street", "city", "zipcode", "geo")
+GEO_FIELDS = ("lat", "lng")
+COMPANY_FIELDS = ("name", "catchPhrase", "bs")
 
 
 def test_tc001_list_all_posts(api):
@@ -76,3 +80,23 @@ def test_tc004_list_comments_of_post(api, payloads):
         comment["id"] for comment in comments if "@" not in comment["email"]
     ]
     assert not comments_with_invalid_email
+
+
+def test_tc005_get_user_with_nested_objects(api, payloads):
+    """TC-005 - GET /users/1 should return nested address.geo and company objects."""
+    user_id = payloads["existing_user_id"]
+
+    response = api.get(f"/users/{user_id}")
+
+    assert response.status_code == HTTPStatus.OK
+    user = assert_json(response)
+    assert_fields(user, USER_FIELDS)
+    assert user["id"] == user_id
+    assert_fields(user["address"], ADDRESS_FIELDS)
+    assert_fields(user["company"], COMPANY_FIELDS)
+    geo = user["address"]["geo"]
+    assert_fields(geo, GEO_FIELDS)
+    invalid_coordinates = [
+        name for name in GEO_FIELDS if not isinstance(geo[name], str) or not geo[name]
+    ]
+    assert not invalid_coordinates
