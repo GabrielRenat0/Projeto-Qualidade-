@@ -100,3 +100,17 @@ def test_tc005_get_user_with_nested_objects(api, payloads):
         name for name in GEO_FIELDS if not isinstance(geo[name], str) or not geo[name]
     ]
     assert not invalid_coordinates
+
+
+def test_tc006_filter_completed_todos(api):
+    """TC-006 - GET /todos?completed=true should return only completed todos."""
+    response = api.get("/todos", params={"completed": "true"})
+
+    assert response.status_code == HTTPStatus.OK
+    todos = assert_json(response)
+    assert isinstance(todos, list)
+    assert len(todos) > 0, "Expected at least one completed todo"
+    incomplete_todos = [
+        todo["id"] for todo in todos if todo["completed"] is not True
+    ]
+    assert not incomplete_todos
