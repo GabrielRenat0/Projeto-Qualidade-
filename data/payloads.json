@@ -1,0 +1,11 @@
+{
+  "valid_boundary_post_ids": {
+    "lower_bound": 1,
+    "upper_bound": 100
+  },
+  "user_posts_filter": {
+    "userId": 1
+  },
+  "post_id_with_comments": 1,
+  "existing_user_id": 1
+}
