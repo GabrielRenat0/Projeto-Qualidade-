@@ -11,6 +11,8 @@ pytestmark = pytest.mark.valid
 EXPECTED_POST_COUNT = 100
 POST_FIELDS = ("id", "userId", "title", "body")
 POSTS_PER_USER = 10
+COMMENT_FIELDS = ("postId", "id", "name", "email", "body")
+COMMENTS_PER_POST = 5
 
 
 def test_tc001_list_all_posts(api):
@@ -52,3 +54,25 @@ def test_tc003_filter_posts_by_user_id(api, payloads):
         post["id"] for post in posts if post["userId"] != user_filter["userId"]
     ]
     assert not posts_from_other_users
+
+
+def test_tc004_list_comments_of_post(api, payloads):
+    """TC-004 - GET /posts/1/comments should return 5 comments with valid emails."""
+    post_id = payloads["post_id_with_comments"]
+
+    response = api.get(f"/posts/{post_id}/comments")
+
+    assert response.status_code == HTTPStatus.OK
+    comments = assert_json(response)
+    assert isinstance(comments, list)
+    assert len(comments) == COMMENTS_PER_POST
+    for comment in comments:
+        assert_fields(comment, COMMENT_FIELDS)
+    comments_from_other_posts = [
+        comment["id"] for comment in comments if comment["postId"] != post_id
+    ]
+    assert not comments_from_other_posts
+    comments_with_invalid_email = [
+        comment["id"] for comment in comments if "@" not in comment["email"]
+    ]
+    assert not comments_with_invalid_email
