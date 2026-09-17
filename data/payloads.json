@@ -7,5 +7,19 @@
     "userId": 1
   },
   "post_id_with_comments": 1,
-  "existing_user_id": 1
+  "existing_user_id": 1,
+  "valid_post": {
+    "title": "Quality Assurance Post",
+    "body": "This post validates the POST endpoint with a valid payload.",
+    "userId": 1
+  },
+  "updated_post": {
+    "id": 1,
+    "title": "Updated Quality Assurance Post",
+    "body": "This post validates the PUT endpoint with an updated payload.",
+    "userId": 1
+  },
+  "partial_patch": {
+    "title": "Patched Title Only"
+  }
 }
