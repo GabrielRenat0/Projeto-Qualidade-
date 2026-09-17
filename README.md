@@ -94,6 +94,46 @@ Sempre que você executar o comando padrão (`pytest`), o arquivo final será ge
 
 ---
 
+## ⚡ Testes de Performance (bônus)
+
+Os testes de performance usam o **k6** e ficam na pasta `perf/`. Eles não rodam no CI: são executados manualmente, e os relatórios da execução oficial ficam versionados em `perf/results/`.
+
+| Teste | Script | Cenário | Critérios de aprovação |
+|---|---|---|---|
+| Carga | `perf/k6_load.js` | 10 usuários virtuais por 30s, com 1s de pausa entre iterações | erros < 1%, checks > 99% e p(95) < 300 ms |
+
+Como a API é um serviço público e gratuito, a carga é propositalmente modesta e faz apenas leituras (`GET`).
+
+1. Instale o k6 (versão usada: 2.2.0; [instalação em outras plataformas](https://grafana.com/docs/k6/latest/set-up/install-k6/)):
+```powershell
+winget install k6 --source winget
+```
+
+2. Na raiz do projeto, rode o teste de carga gerando o relatório HTML.
+
+No PowerShell:
+```powershell
+$env:K6_WEB_DASHBOARD = "true"
+$env:K6_WEB_DASHBOARD_EXPORT = "perf/results/k6_load.html"
+k6 run perf/k6_load.js
+Remove-Item Env:K6_WEB_DASHBOARD, Env:K6_WEB_DASHBOARD_EXPORT
+```
+
+No Linux/Mac (bash):
+```bash
+K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=perf/results/k6_load.html k6 run perf/k6_load.js
+```
+
+Se algum critério de aprovação for violado, o k6 termina com código de saída diferente de zero.
+
+📌 **Onde encontrar os relatórios:**
+- `perf/results/k6_load.html`: painel com os gráficos da execução *(abra no navegador)*
+- `perf/results/k6_load_summary.json`: métricas e resultado de cada critério
+
+**Execução oficial (16/09/2026):** 837 requisições, p(95) de 35,6 ms, média de 29,4 ms, 0% de erros e 100% dos checks aprovados.
+
+---
+
 ## 🗺️ Mapa de Casos de Teste (ID → Arquivo)
 
 Nossos 20 casos de testes automatizados (TC) estão distribuídos em 2 principais blocos e utilizam os dados estáticos isolados no arquivo `data/payloads.json`:
