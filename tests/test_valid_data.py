@@ -114,3 +114,23 @@ def test_tc006_filter_completed_todos(api):
         todo["id"] for todo in todos if todo["completed"] is not True
     ]
     assert not incomplete_todos
+
+
+def test_tc007_create_post(api, payloads):
+    """TC-007 - POST /posts with valid payload should return 201, an ID, and echo fields."""
+    post_payload = payloads["valid_post"]
+
+    response = api.post("/posts", json=post_payload)
+
+    assert response.status_code == HTTPStatus.CREATED
+    created_post = assert_json(response)
+    
+    # Valida que um ID foi gerado
+    assert "id" in created_post
+    assert isinstance(created_post["id"], int)
+    
+    # Valida que os campos enviados foram ecoados corretamente
+    assert created_post["title"] == post_payload["title"]
+    assert created_post["body"] == post_payload["body"]
+    assert created_post["userId"] == post_payload["userId"]
+
