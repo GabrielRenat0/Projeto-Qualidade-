@@ -166,3 +166,16 @@ def test_tc009_patch_post_title(api, payloads):
     assert patched_post["title"] == patch_payload["title"]
     assert patched_post["userId"] == expected_original_user_id
 
+
+def test_tc010_delete_post(api):
+    """TC-010 - DELETE /posts/1 should return 200 and an empty body."""
+    post_id = 1
+
+    response = api.delete(f"/posts/{post_id}")
+
+    assert response.status_code == HTTPStatus.OK
+    body = assert_json(response)
+    
+    assert isinstance(body, dict)
+    assert not body
+
