@@ -150,3 +150,19 @@ def test_tc008_update_post(api, payloads):
     assert updated_post["body"] == put_payload["body"]
     assert updated_post["userId"] == put_payload["userId"]
 
+
+def test_tc009_patch_post_title(api, payloads):
+    """TC-009 - PATCH /posts/1 should only update the title and preserve userId."""
+    patch_payload = payloads["partial_patch"]
+    post_id = 1
+    expected_original_user_id = 1
+
+    response = api.patch(f"/posts/{post_id}", json=patch_payload)
+
+    assert response.status_code == HTTPStatus.OK
+    patched_post = assert_json(response)
+    
+    assert patched_post["id"] == post_id
+    assert patched_post["title"] == patch_payload["title"]
+    assert patched_post["userId"] == expected_original_user_id
+
