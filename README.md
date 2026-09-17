@@ -37,7 +37,7 @@ Para rodar este projeto na sua máquina, você vai precisar de:
 
 1. Clone o repositório para a sua máquina:
 ```bash
-git clone <URL_DO_SEU_REPOSITORIO>
+git clone https://github.com/GabrielRenat0/Projeto-Qualidade-.git
 cd Projeto-Qualidade-
 ```
 
