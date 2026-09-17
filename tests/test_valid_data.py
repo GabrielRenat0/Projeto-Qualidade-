@@ -134,3 +134,19 @@ def test_tc007_create_post(api, payloads):
     assert created_post["body"] == post_payload["body"]
     assert created_post["userId"] == post_payload["userId"]
 
+
+def test_tc008_update_post(api, payloads):
+    """TC-008 - PUT /posts/1 should update all fields and return 200."""
+    put_payload = payloads["updated_post"]
+    post_id = put_payload["id"]
+
+    response = api.put(f"/posts/{post_id}", json=put_payload)
+
+    assert response.status_code == HTTPStatus.OK
+    updated_post = assert_json(response)
+    
+    assert updated_post["id"] == post_id
+    assert updated_post["title"] == put_payload["title"]
+    assert updated_post["body"] == put_payload["body"]
+    assert updated_post["userId"] == put_payload["userId"]
+
