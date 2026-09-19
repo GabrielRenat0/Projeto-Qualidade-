@@ -33,5 +33,6 @@
     "title": "Update for a missing post",
     "body": "This body is valid; only the post ID does not exist.",
     "userId": 1
-  }
+  },
+  "malformed_json": "{title: broken json"
 }
