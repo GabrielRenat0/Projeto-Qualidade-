@@ -34,5 +34,6 @@
     "body": "This body is valid; only the post ID does not exist.",
     "userId": 1
   },
-  "malformed_json": "{title: broken json"
+  "malformed_json": "{title: broken json",
+  "post_id_to_delete": 1
 }
