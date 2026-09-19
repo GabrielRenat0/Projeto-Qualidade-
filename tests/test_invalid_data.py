@@ -43,3 +43,17 @@ def test_tc017_create_post_with_invalid_types(api, payloads):
 
     assert created_post["userId"] == post_payload["userId"]
     assert isinstance(created_post["userId"], str)
+
+
+def test_tc018_update_nonexistent_post(api, payloads):
+    """TC-018 - PUT /posts/999999 should return 500, showing the mock crashes when updating a nonexistent resource."""
+
+    post_id = payloads["nonexistent_post_id"]
+    put_payload = payloads["update_nonexistent_post"]
+
+    response = api.put(f"/posts/{post_id}", json=put_payload)
+
+    # Observed mock behavior: it returns 500 for a nonexistent post; a real API would typically return 404.
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+
+    assert "text/html" in response.headers["Content-Type"]
