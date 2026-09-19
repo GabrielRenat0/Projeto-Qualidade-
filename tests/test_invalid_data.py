@@ -69,3 +69,19 @@ def test_tc019_create_post_with_malformed_json(api, payloads):
     assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
     assert "text/html" in response.headers["Content-Type"]
     assert "SyntaxError" in response.text
+
+
+def test_tc020_get_post_after_delete(api, payloads):
+    """TC-020 - GET /posts/1 after DELETE /posts/1 should still return 200, showing the mock does not persist deletions."""
+    post_id = payloads["post_id_to_delete"]
+
+    delete_response = api.delete(f"/posts/{post_id}")
+
+    assert delete_response.status_code == HTTPStatus.OK
+
+    get_response = api.get(f"/posts/{post_id}")
+
+    # Observed mock behavior: the deleted post is still returned with 200; a real API would typically return 404.
+    assert get_response.status_code == HTTPStatus.OK
+    deleted_post = assert_json(get_response)
+    assert deleted_post["id"] == post_id
