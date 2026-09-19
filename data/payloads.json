@@ -27,5 +27,11 @@
     "title": 2026,
     "userId": "not a number",
     "body": "regular text"
+  },
+  "nonexistent_post_id": 999999,
+  "update_nonexistent_post": {
+    "title": "Update for a missing post",
+    "body": "This body is valid; only the post ID does not exist.",
+    "userId": 1
   }
 }
