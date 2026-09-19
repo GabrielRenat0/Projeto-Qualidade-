@@ -21,5 +21,6 @@
   },
   "partial_patch": {
     "title": "Patched Title Only"
-  }
+  },
+  "empty_post": {}
 }
