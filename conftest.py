@@ -1,4 +1,7 @@
 from collections.abc import Iterator
+from collections import Counter, defaultdict
+from html import escape
+import re
 from typing import Any
 
 import pytest
@@ -9,6 +12,71 @@ from helpers import load_payloads
 BASE_URL = "https://jsonplaceholder.typicode.com"
 REQUEST_TIMEOUT_SECONDS = 10
 DEFAULT_HEADERS = {"Content-Type": "application/json"}
+
+_REPORT_GROUPS = {
+    "Integrante A": (1, 5),
+    "Integrante B": (6, 10),
+    "Integrante C": (11, 15),
+    "Integrante D": (16, 20),
+}
+_REPORT_COUNTS: defaultdict[str, Counter[str]] = defaultdict(Counter)
+
+
+def _report_group(nodeid: str) -> str:
+    """Return the integrante responsible for the test case in ``nodeid``."""
+    match = re.search(r"tc[-_]?(\d{3})", nodeid, flags=re.IGNORECASE)
+    if match:
+        test_case = int(match.group(1))
+        for integrante, (first_case, last_case) in _REPORT_GROUPS.items():
+            if first_case <= test_case <= last_case:
+                return integrante
+    return "Não classificado"
+
+
+def pytest_html_report_title(report) -> None:
+    """Give the single generated report a title that describes its scope."""
+    report.title = "Relatório consolidado — Integrantes A e B"
+
+
+def pytest_html_results_table_header(cells: list[str]) -> None:
+    """Add a visible integrante column to the pytest-html results table."""
+    cells.insert(1, "<th>Integrante</th>")
+
+
+def pytest_html_results_table_row(report, cells: list[str]) -> None:
+    """Label every test result with the integrante responsible for its TC."""
+    integrante = escape(_report_group(report.nodeid))
+    cells.insert(1, f'<td class="col-integrante">{integrante}</td>')
+
+
+def pytest_runtest_logreport(report) -> None:
+    """Collect per-integrante outcomes for the report summary."""
+    if report.when == "call":
+        _REPORT_COUNTS[_report_group(report.nodeid)][report.outcome] += 1
+
+
+def pytest_html_results_summary(prefix: list[str], session) -> None:
+    """Add a concise breakdown of the consolidated report to its summary."""
+    lines = [
+        "<h3>Resultados por integrante</h3>",
+        "<ul>",
+    ]
+    for integrante, (first_case, last_case) in _REPORT_GROUPS.items():
+        counts = _REPORT_COUNTS.get(integrante, Counter())
+        total = sum(counts.values())
+        if not total:
+            continue
+        status = ", ".join(
+            f"{amount} {outcome}"
+            for outcome, amount in sorted(counts.items())
+        )
+        lines.append(
+            f"<li><strong>{integrante}</strong> — "
+            f"TC-{first_case:03d} a TC-{last_case:03d}: "
+            f"{total} execuções ({escape(status)}).</li>"
+        )
+    lines.extend(["</ul>"])
+    prefix.extend(lines)
 
 
 class APIClient:
