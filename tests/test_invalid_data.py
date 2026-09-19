@@ -17,10 +17,29 @@ def test_tc016_create_empty_post(api, payloads):
     # Observed mock behavior: it returns 201 for an empty body; a real API would typically return 400.
     assert response.status_code == HTTPStatus.CREATED
     created_post = assert_json(response)
-    
+
     assert "id" in created_post
     assert isinstance(created_post["id"], int)
 
     assert "title" not in created_post
     assert "body" not in created_post
-    assert "userId" not in created_post   
+    assert "userId" not in created_post
+
+
+def test_tc017_create_post_with_invalid_types(api, payloads):
+    """TC-017 - POST /posts with wrong field types should return 201, showing the API does not enforce a schema."""
+    post_payload = payloads["post_with_invalid_types"]
+    response = api.post("/posts", json=post_payload)
+
+    # Observed mock behavior: it returns 201 for wrong field types; a real API would typically return 400.
+    assert response.status_code == HTTPStatus.CREATED
+    created_post = assert_json(response)
+
+    assert "id" in created_post
+    assert isinstance(created_post["id"], int)
+
+    assert created_post["title"] == post_payload["title"]
+    assert isinstance(created_post["title"], int)
+
+    assert created_post["userId"] == post_payload["userId"]
+    assert isinstance(created_post["userId"], str)
