@@ -22,8 +22,8 @@ coluna "Dados de entrada" mostra a chave usada e o valor.
 | TC-013 | *A preencher* | | | | |
 | TC-014 | *A preencher* | | | | |
 | TC-015 | *A preencher* | | | | |
-| TC-016 | *A preencher* | | | | |
-| TC-017 | *A preencher* | | | | |
-| TC-018 | *A preencher* | | | | |
-| TC-019 | *A preencher* | | | | |
-| TC-020 | *A preencher* | | | | |
+| TC-016 | Criar post com corpo vazio | API acessível | `empty_post`: objeto vazio `{}` | `POST /posts` | 201; resposta com `id` numérico e sem `title`, `body` e `userId`. Comportamento observado do mock: não valida o payload (uma API real devolveria 400) |
+| TC-017 | Criar post com tipos de campo inválidos | API acessível | `post_with_invalid_types`: `title` numérico (2026) e `userId` em texto | `POST /posts` | 201; `id` numérico gerado; `title` e `userId` devolvidos com os mesmos valores e tipos enviados (`int` e `str`). Comportamento observado: sem validação de schema (uma API real devolveria 400) |
+| TC-018 | Atualizar post inexistente (PUT) | API acessível; post 999999 inexistente | `nonexistent_post_id`: 999999; `update_nonexistent_post`: `title`, `body` e `userId` válidos, sem `id` | `PUT /posts/999999` | 500; corpo em HTML (`text/html`) com stack trace. Comportamento observado: o mock quebra ao atualizar recurso inexistente (uma API real devolveria 404) |
+| TC-019 | Criar post com JSON malformado | API acessível; cliente envia `Content-Type: application/json` | `malformed_json`: texto `{title: broken json`, enviado cru | `POST /posts` com o corpo em `data=` | 500; corpo em HTML com `SyntaxError` do parse. Sem o header JSON o mock responde 201. Comportamento observado: erro de parse não tratado (uma API real devolveria 400) |
+| TC-020 | Consultar post depois de excluí-lo | API acessível; post 1 existente | `post_id_to_delete`: 1 | `DELETE /posts/1` seguido de `GET /posts/1` | DELETE 200; GET ainda 200 com `id` igual a 1. Comportamento observado: o mock não persiste a exclusão (uma API real devolveria 404) |
