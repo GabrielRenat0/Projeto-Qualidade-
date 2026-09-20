@@ -45,6 +45,17 @@ def test_tc013_get_nonexistent_route(api, payloads):
     assert body == {}
 
 
+def test_tc014_filter_posts_by_nonexistent_user(api, payloads):
+    """TC-014 - GET /posts?userId=9999 should return 200 and an empty list."""
+    user_filter = payloads["nonexistent_user_filter"]
+
+    response = api.get("/posts", params=user_filter)
+
+    assert response.status_code == HTTPStatus.OK
+    posts = assert_json(response)
+    assert posts == []
+
+
 def test_tc016_create_empty_post(api, payloads):
     """TC-016 - POST /posts with an empty body should return 201, showing the API does not validate the payload."""
     post_payload = payloads["empty_post"]
