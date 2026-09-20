@@ -9,6 +9,20 @@ from helpers import assert_json
 pytestmark = pytest.mark.invalid
 
 
+@pytest.mark.parametrize(
+    "bound", ["below_lower_bound", "above_upper_bound", "far_above_upper_bound"]
+)
+def test_tc011_get_post_outside_valid_id_range(api, payloads, bound):
+    """TC-011 - GET /posts/{id} outside the valid 1-100 range should return 404."""
+    post_id = payloads["out_of_range_post_ids"][bound]
+
+    response = api.get(f"/posts/{post_id}")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    body = assert_json(response)
+    assert body == {}
+
+
 def test_tc016_create_empty_post(api, payloads):
     """TC-016 - POST /posts with an empty body should return 201, showing the API does not validate the payload."""
     post_payload = payloads["empty_post"]
