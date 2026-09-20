@@ -35,7 +35,7 @@ def test_tc012_get_post_with_non_numeric_id(api, payloads):
 
 
 def test_tc013_get_nonexistent_route(api, payloads):
-    """TC-013 - GET on a route that does not exist should return 404."""
+    """TC-013 - GET /nonexistent-resource should return 404 for an unknown route."""
     route = payloads["nonexistent_route"]
 
     response = api.get(route)
