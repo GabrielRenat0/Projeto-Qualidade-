@@ -28,7 +28,7 @@
     "far_above_upper_bound": 999999
   },
   "invalid_type_post_id": "abc",
-  "nonexistent_route": "/nonexistent-resource",
+  "nonexistent_resource": "nonexistent-resource",
   "nonexistent_user_filter": {
     "userId": 9999
   },
