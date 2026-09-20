@@ -23,6 +23,17 @@ def test_tc011_get_post_outside_valid_id_range(api, payloads, bound):
     assert body == {}
 
 
+def test_tc012_get_post_with_non_numeric_id(api, payloads):
+    """TC-012 - GET /posts/{id} with a non-numeric ID should return 404."""
+    post_id = payloads["invalid_type_post_id"]
+
+    response = api.get(f"/posts/{post_id}")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    body = assert_json(response)
+    assert body == {}
+
+
 def test_tc016_create_empty_post(api, payloads):
     """TC-016 - POST /posts with an empty body should return 201, showing the API does not validate the payload."""
     post_payload = payloads["empty_post"]
