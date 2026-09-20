@@ -27,6 +27,7 @@
     "above_upper_bound": 101,
     "far_above_upper_bound": 999999
   },
+  "invalid_type_post_id": "abc",
   "empty_post": {},
   "post_with_invalid_types": {
     "title": 2026,
