@@ -43,3 +43,45 @@ def test_tc017_create_post_with_invalid_types(api, payloads):
 
     assert created_post["userId"] == post_payload["userId"]
     assert isinstance(created_post["userId"], str)
+
+
+def test_tc018_update_nonexistent_post(api, payloads):
+    """TC-018 - PUT /posts/999999 should return 500, showing the mock crashes when updating a nonexistent resource."""
+    post_id = payloads["nonexistent_post_id"]
+    put_payload = payloads["update_nonexistent_post"]
+
+    response = api.put(f"/posts/{post_id}", json=put_payload)
+
+    # Observed mock behavior: it returns 500 for a nonexistent post; a real API would typically return 404.
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "text/html" in response.headers["Content-Type"]
+
+
+def test_tc019_create_post_with_malformed_json(api, payloads):
+    """TC-019 - POST /posts with a malformed JSON body should return 500, showing the mock does not handle parse errors."""
+    malformed_body = payloads["malformed_json"]
+
+    response = api.post("/posts", data=malformed_body)
+
+    # Observed mock behavior: it returns 500 for a malformed JSON body; a real API would typically return 400.
+    # The error only happens because the api fixture sends Content-Type: application/json;
+    # without that header the mock accepts the body and returns 201.
+    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
+    assert "text/html" in response.headers["Content-Type"]
+    assert "SyntaxError" in response.text
+
+
+def test_tc020_get_post_after_delete(api, payloads):
+    """TC-020 - GET /posts/1 after DELETE /posts/1 should still return 200, showing the mock does not persist deletions."""
+    post_id = payloads["post_id_to_delete"]
+
+    delete_response = api.delete(f"/posts/{post_id}")
+
+    assert delete_response.status_code == HTTPStatus.OK
+
+    get_response = api.get(f"/posts/{post_id}")
+
+    # Observed mock behavior: the deleted post is still returned with 200; a real API would typically return 404.
+    assert get_response.status_code == HTTPStatus.OK
+    deleted_post = assert_json(get_response)
+    assert deleted_post["id"] == post_id
