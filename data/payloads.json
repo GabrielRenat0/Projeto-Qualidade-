@@ -21,5 +21,11 @@
   },
   "partial_patch": {
     "title": "Patched Title Only"
+  },
+  "empty_post": {},
+  "post_with_invalid_types": {
+    "title": 2026,
+    "userId": "not a number",
+    "body": "regular text"
   }
 }
