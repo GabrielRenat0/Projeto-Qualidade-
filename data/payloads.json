@@ -22,6 +22,11 @@
   "partial_patch": {
     "title": "Patched Title Only"
   },
+  "out_of_range_post_ids": {
+    "below_lower_bound": 0,
+    "above_upper_bound": 101,
+    "far_above_upper_bound": 999999
+  },
   "empty_post": {},
   "post_with_invalid_types": {
     "title": 2026,
