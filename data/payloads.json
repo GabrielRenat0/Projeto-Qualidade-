@@ -32,6 +32,9 @@
   "nonexistent_user_filter": {
     "userId": 9999
   },
+  "negative_comment_filter": {
+    "postId": -1
+  },
   "empty_post": {},
   "post_with_invalid_types": {
     "title": 2026,
