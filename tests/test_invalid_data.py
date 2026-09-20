@@ -56,6 +56,17 @@ def test_tc014_filter_posts_by_nonexistent_user(api, payloads):
     assert posts == []
 
 
+def test_tc015_filter_comments_by_negative_post_id(api, payloads):
+    """TC-015 - GET /comments?postId=-1 should return 200 and an empty list."""
+    comment_filter = payloads["negative_comment_filter"]
+
+    response = api.get("/comments", params=comment_filter)
+
+    assert response.status_code == HTTPStatus.OK
+    comments = assert_json(response)
+    assert comments == []
+
+
 def test_tc016_create_empty_post(api, payloads):
     """TC-016 - POST /posts with an empty body should return 201, showing the API does not validate the payload."""
     post_payload = payloads["empty_post"]
