@@ -134,14 +134,34 @@ Se algum critério de aprovação for violado, o k6 termina com código de saíd
 
 ---
 
-## 🗺️ Mapa de Casos de Teste (ID → Arquivo)
+## 🗺️ Mapa de Casos de Teste (ID → Arquivo → Teste)
 
-Nossos 20 casos de testes automatizados (TC) estão distribuídos em 2 principais blocos e utilizam os dados estáticos isolados no arquivo `data/payloads.json`:
+Os 20 casos de teste automatizados usam a massa compartilhada em `data/payloads.json` e estão mapeados individualmente abaixo:
 
-| Cenário de Teste | ID dos Testes | Arquivo Responsável |
+| ID | Arquivo | Função de teste |
 |---|---|---|
-| **Testes com Dados Válidos (Sucesso)** | TC-001 ao TC-010 | `tests/test_valid_data.py` |
-| **Testes com Dados Inválidos/Inoportunos** | TC-011 ao TC-020 | `tests/test_invalid_data.py` |
+| TC-001 | `tests/test_valid_data.py` | `test_tc001_list_all_posts` |
+| TC-002 | `tests/test_valid_data.py` | `test_tc002_get_post_at_valid_boundaries` |
+| TC-003 | `tests/test_valid_data.py` | `test_tc003_filter_posts_by_user_id` |
+| TC-004 | `tests/test_valid_data.py` | `test_tc004_list_comments_of_post` |
+| TC-005 | `tests/test_valid_data.py` | `test_tc005_get_user_with_nested_objects` |
+| TC-006 | `tests/test_valid_data.py` | `test_tc006_filter_completed_todos` |
+| TC-007 | `tests/test_valid_data.py` | `test_tc007_create_post` |
+| TC-008 | `tests/test_valid_data.py` | `test_tc008_update_post` |
+| TC-009 | `tests/test_valid_data.py` | `test_tc009_patch_post_title` |
+| TC-010 | `tests/test_valid_data.py` | `test_tc010_delete_post` |
+| TC-011 | `tests/test_invalid_data.py` | `test_tc011_get_post_outside_valid_id_range` |
+| TC-012 | `tests/test_invalid_data.py` | `test_tc012_get_post_with_non_numeric_id` |
+| TC-013 | `tests/test_invalid_data.py` | `test_tc013_get_nonexistent_route` |
+| TC-014 | `tests/test_invalid_data.py` | `test_tc014_filter_posts_by_nonexistent_user` |
+| TC-015 | `tests/test_invalid_data.py` | `test_tc015_filter_comments_by_negative_post_id` |
+| TC-016 | `tests/test_invalid_data.py` | `test_tc016_create_empty_post` |
+| TC-017 | `tests/test_invalid_data.py` | `test_tc017_create_post_with_invalid_types` |
+| TC-018 | `tests/test_invalid_data.py` | `test_tc018_update_nonexistent_post` |
+| TC-019 | `tests/test_invalid_data.py` | `test_tc019_create_post_with_malformed_json` |
+| TC-020 | `tests/test_invalid_data.py` | `test_tc020_get_post_after_delete` |
+
+Os TCs parametrizados (TC-002 e TC-011) geram 23 execuções no total.
 
 ---
 
