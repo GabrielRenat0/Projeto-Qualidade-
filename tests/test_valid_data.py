@@ -102,9 +102,11 @@ def test_tc005_get_user_with_nested_objects(api, payloads):
     assert not invalid_coordinates
 
 
-def test_tc006_filter_completed_todos(api):
+def test_tc006_filter_completed_todos(api, payloads):
     """TC-006 - GET /todos?completed=true should return only completed todos."""
-    response = api.get("/todos", params={"completed": "true"})
+    filter_params = payloads["completed_todos_filter"]
+
+    response = api.get("/todos", params=filter_params)
 
     assert response.status_code == HTTPStatus.OK
     todos = assert_json(response)
@@ -154,8 +156,9 @@ def test_tc008_update_post(api, payloads):
 def test_tc009_patch_post_title(api, payloads):
     """TC-009 - PATCH /posts/1 should only update the title and preserve userId."""
     patch_payload = payloads["partial_patch"]
-    post_id = 1
-    expected_original_user_id = 1
+    patch_case = payloads["partial_patch_case"]
+    post_id = patch_case["post_id"]
+    expected_original_user_id = patch_case["expected_user_id"]
 
     response = api.patch(f"/posts/{post_id}", json=patch_payload)
 
@@ -167,9 +170,9 @@ def test_tc009_patch_post_title(api, payloads):
     assert patched_post["userId"] == expected_original_user_id
 
 
-def test_tc010_delete_post(api):
+def test_tc010_delete_post(api, payloads):
     """TC-010 - DELETE /posts/1 should return 200 and an empty body."""
-    post_id = 1
+    post_id = payloads["valid_post_id_to_delete"]
 
     response = api.delete(f"/posts/{post_id}")
 

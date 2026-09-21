@@ -22,6 +22,14 @@
   "partial_patch": {
     "title": "Patched Title Only"
   },
+  "completed_todos_filter": {
+    "completed": "true"
+  },
+  "partial_patch_case": {
+    "post_id": 1,
+    "expected_user_id": 1
+  },
+  "valid_post_id_to_delete": 1,
   "out_of_range_post_ids": {
     "below_lower_bound": 0,
     "above_upper_bound": 101,
