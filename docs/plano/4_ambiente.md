@@ -17,7 +17,7 @@
 | pytest | 8.3.3 | Execução dos testes e seleção pelos markers `valid` e `invalid` |
 | requests | 2.32.3 | Cliente HTTP das chamadas à API |
 | pytest-html | 4.1.1 | Relatório de execução em `reports/report.html` |
-| k6 | 2.2.0 | Teste de carga (bônus) |
+| k6 | 2.2.0 | Testes de carga e estresse (bônus) |
 | GitHub Actions | `actions/checkout`, `actions/setup-python` e `actions/upload-artifact` na versão 7 | Integração contínua |
 
 As versões de `requests`, `pytest` e `pytest-html` estão fixadas no `requirements.txt`.
@@ -34,5 +34,5 @@ automaticamente pelo `pip`.
 ### 4.4 Como reproduzir
 
 O `README.md` descreve a instalação e a execução: criar o ambiente virtual, instalar o
-`requirements.txt` e rodar `pytest`. O teste de carga exige o k6 instalado e está
-documentado na seção "Testes de Performance (bônus)" do README.
+`requirements.txt` e rodar `pytest`. Os testes de carga e de estresse exigem o k6 instalado e
+estão documentados na seção "Testes de Performance (bônus)" do README.

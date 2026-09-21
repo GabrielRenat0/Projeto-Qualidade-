@@ -101,6 +101,11 @@ Os testes de performance usam o **k6** e ficam na pasta `perf/`. Eles não rodam
 | Teste | Script | Cenário | Critérios de aprovação |
 |---|---|---|---|
 | Carga | `perf/k6_load.js` | 10 usuários virtuais por 30s, com 1s de pausa entre iterações | erros < 1%, checks > 99% e p(95) < 300 ms |
+| Estresse | `perf/k6_stress.js` | rampa de 0 a 30 usuários virtuais em 1 min (15s subindo até 15, 20s até 30, 15s mantendo 30 e 10s descendo) | erros < 1%, checks > 99% e p(95) < 500 ms |
+
+O limite de tempo do teste de estresse é maior porque ali a degradação é esperada: o que se
+verifica é se a API continua respondendo corretamente sob pressão, não se ela continua tão
+rápida quanto na carga nominal.
 
 Como a API é um serviço público e gratuito, a carga é propositalmente modesta e faz apenas leituras (`GET`).
 
@@ -109,7 +114,7 @@ Como a API é um serviço público e gratuito, a carga é propositalmente modest
 winget install k6 --source winget
 ```
 
-2. Na raiz do projeto, rode o teste de carga gerando o relatório HTML.
+2. Na raiz do projeto, rode o teste gerando o relatório HTML.
 
 No PowerShell:
 ```powershell
@@ -124,13 +129,23 @@ No Linux/Mac (bash):
 K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_EXPORT=perf/results/k6_load.html k6 run perf/k6_load.js
 ```
 
+Para rodar o teste de estresse, troque `k6_load` por `k6_stress` nos dois lugares do comando
+(no nome do relatório e no caminho do script).
+
 Se algum critério de aprovação for violado, o k6 termina com código de saída diferente de zero.
 
 📌 **Onde encontrar os relatórios:**
-- `perf/results/k6_load.html`: painel com os gráficos da execução *(abra no navegador)*
-- `perf/results/k6_load_summary.json`: métricas e resultado de cada critério
+- `perf/results/k6_load.html` e `perf/results/k6_stress.html`: painéis com os gráficos de cada execução *(abra no navegador)*
+- `perf/results/k6_load_summary.json` e `perf/results/k6_stress_summary.json`: métricas e resultado de cada critério
 
-**Execução oficial (16/09/2026):** 837 requisições, p(95) de 35,6 ms, média de 29,4 ms, 0% de erros e 100% dos checks aprovados.
+**Execução oficial de carga (16/09/2026):** 837 requisições, p(95) de 35,6 ms, média de 29,4 ms, 0% de erros e 100% dos checks aprovados.
+
+**Execução oficial de estresse (21/09/2026):** 3.267 requisições em 1.089 iterações (53,8 req/s), p(95) de 29,2 ms, média de 23,4 ms, máximo de 417,3 ms, 0% de erros e 100% dos checks aprovados.
+
+Vale registrar o que o teste de estresse mostrou: com o triplo da concorrência do teste de
+carga, o p(95) não piorou (29,2 ms contra 35,6 ms). A API absorveu a rampa sem degradar, então
+o resultado estabelece um piso de capacidade — não o limite do serviço, que exigiria uma carga
+maior do que é razoável aplicar a uma API pública e gratuita.
 
 ---
 
