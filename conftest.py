@@ -35,7 +35,9 @@ def _report_group(nodeid: str) -> str:
 
 def pytest_html_report_title(report) -> None:
     """Give the single generated report a title that describes its scope."""
-    report.title = "Relatório consolidado — Integrantes A e B"
+    first_case = min(first for first, _ in _REPORT_GROUPS.values())
+    last_case = max(last for _, last in _REPORT_GROUPS.values())
+    report.title = f"Relatório consolidado — TC-{first_case:03d} a TC-{last_case:03d}"
 
 
 def pytest_html_results_table_header(cells: list[str]) -> None:
