@@ -4,9 +4,11 @@ Uses only the standard library, so it runs with the system ``python3`` even
 when the pipeline fails before the virtual environment exists.
 """
 
+import argparse
 import os
 import smtplib
-from collections.abc import Mapping
+import sys
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from email.message import EmailMessage
 
@@ -114,3 +116,38 @@ def send_message(config: EmailConfig, message: EmailMessage) -> None:
         if config.user and config.password:
             smtp.login(config.user, config.password)
         smtp.send_message(message)
+
+
+def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ) -> int:
+    """Send the notification for the build status given on the command line."""
+    parser = argparse.ArgumentParser(description="Send the build notification e-mail.")
+    parser.add_argument(
+        "--status", required=True, help="build result, e.g. SUCCESS or FAILURE"
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        config = load_config(env)
+    except ConfigError as error:
+        print(f"notify_email: configuration error: {error}", file=sys.stderr)
+        return 2
+
+    message = build_message(
+        config, build_subject(args.status, env), build_body(args.status, env)
+    )
+
+    try:
+        send_message(config, message)
+    except (OSError, smtplib.SMTPException) as error:
+        print(
+            f"notify_email: could not send through {config.host}:{config.port}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"notify_email: sent {message['Subject']!r} to {len(config.recipients)} recipient(s)")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
