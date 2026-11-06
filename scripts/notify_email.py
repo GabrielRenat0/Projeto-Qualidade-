@@ -71,3 +71,22 @@ def build_subject(status: str, env: Mapping[str, str] = os.environ) -> str:
         subject += f" #{build_number}"
 
     return subject
+
+
+def build_body(status: str, env: Mapping[str, str] = os.environ) -> str:
+    """Return the plain-text body with the build details that ``env`` provides."""
+    build_number = env.get("BUILD_NUMBER")
+    details = [
+        ("Job", env.get("JOB_NAME") or DEFAULT_JOB_NAME),
+        ("Build", f"#{build_number}" if build_number else ""),
+        # GIT_BRANCH comes from the git plugin; BRANCH is the job parameter.
+        ("Branch", env.get("GIT_BRANCH") or env.get("BRANCH", "")),
+        ("Commit", env.get("GIT_COMMIT", "")),
+        # Jenkins has no duration variable; the Jenkinsfile exports it.
+        ("Duration", env.get("BUILD_DURATION", "")),
+        ("Link", env.get("BUILD_URL", "")),
+    ]
+
+    lines = [f"Build status: {status.strip().upper()}", ""]
+    lines += [f"{label}: {value}" for label, value in details if value]
+    return "\n".join(lines) + "\n"
