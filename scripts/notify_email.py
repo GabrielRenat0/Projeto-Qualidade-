@@ -5,11 +5,14 @@ when the pipeline fails before the virtual environment exists.
 """
 
 import os
+import smtplib
 from collections.abc import Mapping
 from dataclasses import dataclass
+from email.message import EmailMessage
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
 DEFAULT_JOB_NAME = "projeto-qualidade"
+SMTP_TIMEOUT_SECONDS = 30
 
 
 class ConfigError(Exception):
@@ -90,3 +93,24 @@ def build_body(status: str, env: Mapping[str, str] = os.environ) -> str:
     lines = [f"Build status: {status.strip().upper()}", ""]
     lines += [f"{label}: {value}" for label, value in details if value]
     return "\n".join(lines) + "\n"
+
+
+def build_message(config: EmailConfig, subject: str, body: str) -> EmailMessage:
+    """Assemble the e-mail with the sender, recipients, subject and body."""
+    message = EmailMessage()
+    message["From"] = config.sender
+    message["To"] = ", ".join(config.recipients)
+    message["Subject"] = subject
+    message.set_content(body)
+    return message
+
+
+def send_message(config: EmailConfig, message: EmailMessage) -> None:
+    """Deliver ``message`` through the configured SMTP server."""
+    with smtplib.SMTP(config.host, config.port, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
+        if config.starttls:
+            smtp.starttls()
+        # Mailpit accepts mail without login; Gmail requires it.
+        if config.user and config.password:
+            smtp.login(config.user, config.password)
+        smtp.send_message(message)
