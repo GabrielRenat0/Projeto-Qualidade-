@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
+DEFAULT_JOB_NAME = "projeto-qualidade"
 
 
 class ConfigError(Exception):
@@ -58,3 +59,15 @@ def load_config(env: Mapping[str, str] = os.environ) -> EmailConfig:
         password=env.get("SMTP_PASSWORD", ""),
         starttls=env.get("SMTP_STARTTLS", "false").strip().lower() in TRUE_VALUES,
     )
+
+
+def build_subject(status: str, env: Mapping[str, str] = os.environ) -> str:
+    """Return the subject line with the build status and, when known, its number."""
+    job = env.get("JOB_NAME") or DEFAULT_JOB_NAME
+    subject = f"[{status.strip().upper()}] {job}"
+
+    build_number = env.get("BUILD_NUMBER")
+    if build_number:
+        subject += f" #{build_number}"
+
+    return subject
