@@ -1,5 +1,8 @@
 """Unit tests for ``scripts/notify_email.py``, with a fake SMTP server."""
 
+import smtplib
+from unittest import mock
+
 import pytest
 
 from scripts import notify_email
@@ -39,6 +42,18 @@ def make_config(**overrides) -> EmailConfig:
     }
     values.update(overrides)
     return EmailConfig(**values)
+
+
+@pytest.fixture
+def smtp():
+    """Replace ``smtplib.SMTP`` and yield the fake SMTP class."""
+    with mock.patch.object(notify_email.smtplib, "SMTP") as smtp_class:
+        yield smtp_class
+
+
+def session_of(smtp_class: mock.MagicMock) -> mock.MagicMock:
+    """Return the fake connection that the ``with`` block of the script receives."""
+    return smtp_class.return_value.__enter__.return_value
 
 
 # load_config
@@ -159,3 +174,92 @@ def test_build_message_sets_the_headers_and_the_body():
     assert message["To"] == "ana@example.com, bruno@example.com"
     assert message["Subject"] == "[SUCCESS] job #1"
     assert message.get_content() == "Body\n"
+
+
+# send_message
+
+
+def test_send_message_to_mailpit_skips_tls_and_login(smtp):
+    config = make_config()
+    message = notify_email.build_message(config, "subject", "body")
+
+    notify_email.send_message(config, message)
+
+    smtp.assert_called_once_with("mailpit", 1025, timeout=notify_email.SMTP_TIMEOUT_SECONDS)
+    session = session_of(smtp)
+    session.starttls.assert_not_called()
+    session.login.assert_not_called()
+    session.send_message.assert_called_once_with(message)
+
+
+def test_send_message_to_gmail_uses_tls_and_login(smtp):
+    config = notify_email.load_config(GMAIL_ENV)
+    message = notify_email.build_message(config, "subject", "body")
+
+    notify_email.send_message(config, message)
+
+    session = session_of(smtp)
+    assert session.method_calls == [
+        mock.call.starttls(),
+        mock.call.login("bot@example.com", "app-password"),
+        mock.call.send_message(message),
+    ]
+
+
+# main
+
+
+def test_main_sends_the_success_email(smtp, capsys):
+    exit_code = notify_email.main(["--status", "SUCCESS"], {**GMAIL_ENV, **JENKINS_ENV})
+
+    assert exit_code == 0
+    message = session_of(smtp).send_message.call_args.args[0]
+    assert message["Subject"] == "[SUCCESS] projeto-qualidade #42"
+    assert "Build status: SUCCESS" in message.get_content()
+    assert "sent '[SUCCESS] projeto-qualidade #42' to 2 recipient(s)" in capsys.readouterr().out
+
+
+def test_main_sends_the_failure_email(smtp):
+    exit_code = notify_email.main(["--status", "FAILURE"], {**GMAIL_ENV, **JENKINS_ENV})
+
+    assert exit_code == 0
+    message = session_of(smtp).send_message.call_args.args[0]
+    assert message["Subject"] == "[FAILURE] projeto-qualidade #42"
+    assert "Build status: FAILURE" in message.get_content()
+
+
+def test_main_without_recipients_fails_without_connecting(smtp, capsys):
+    env = {key: val for key, val in GMAIL_ENV.items() if key != "NOTIFY_EMAIL_TO"}
+
+    exit_code = notify_email.main(["--status", "SUCCESS"], env)
+
+    assert exit_code == 2
+    smtp.assert_not_called()
+    assert "configuration error: NOTIFY_EMAIL_TO is not set" in capsys.readouterr().err
+
+
+def test_main_with_the_server_down_reports_the_error(smtp, capsys):
+    smtp.side_effect = ConnectionRefusedError("connection refused")
+
+    exit_code = notify_email.main(["--status", "SUCCESS"], GMAIL_ENV)
+
+    assert exit_code == 1
+    assert "could not send through smtp.example.com:587" in capsys.readouterr().err
+
+
+def test_main_with_rejected_login_reports_the_error(smtp, capsys):
+    session_of(smtp).login.side_effect = smtplib.SMTPAuthenticationError(535, b"bad password")
+
+    exit_code = notify_email.main(["--status", "SUCCESS"], GMAIL_ENV)
+
+    assert exit_code == 1
+    session_of(smtp).send_message.assert_not_called()
+    assert "could not send through smtp.example.com:587" in capsys.readouterr().err
+
+
+def test_main_requires_the_status(smtp):
+    with pytest.raises(SystemExit) as exit_info:
+        notify_email.main([], GMAIL_ENV)
+
+    assert exit_info.value.code == 2
+    smtp.assert_not_called()
