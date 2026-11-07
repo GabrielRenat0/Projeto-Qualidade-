@@ -16,6 +16,31 @@ GMAIL_ENV = {
     "SMTP_STARTTLS": "true",
 }
 
+JENKINS_ENV = {
+    "JOB_NAME": "projeto-qualidade",
+    "BUILD_NUMBER": "42",
+    "GIT_BRANCH": "origin/main",
+    "GIT_COMMIT": "a321775",
+    "BUILD_DURATION": "1 min 5 sec",
+    "BUILD_URL": "http://localhost:8080/job/projeto-qualidade/42/",
+}
+
+
+def make_config(**overrides) -> EmailConfig:
+    """Return a Mailpit-like configuration, changed by ``overrides``."""
+    values = {
+        "recipients": ("ana@example.com",),
+        "sender": "bot@example.com",
+        "host": "mailpit",
+        "port": 1025,
+        "user": "",
+        "password": "",
+        "starttls": False,
+    }
+    values.update(overrides)
+    return EmailConfig(**values)
+
+
 # load_config
 
 
@@ -82,3 +107,55 @@ def test_load_config_reads_starttls_as_a_flag(value, expected):
     config = notify_email.load_config({**GMAIL_ENV, "SMTP_STARTTLS": value})
 
     assert config.starttls is expected
+
+
+# build_subject and build_body
+
+
+def test_build_subject_has_the_status_and_the_build_number():
+    assert notify_email.build_subject("success", JENKINS_ENV) == "[SUCCESS] projeto-qualidade #42"
+
+
+def test_build_subject_outside_jenkins_uses_the_default_job():
+    assert notify_email.build_subject(" failure ", {}) == "[FAILURE] projeto-qualidade"
+
+
+def test_build_body_lists_the_jenkins_details():
+    body = notify_email.build_body("FAILURE", JENKINS_ENV)
+
+    assert body == (
+        "Build status: FAILURE\n"
+        "\n"
+        "Job: projeto-qualidade\n"
+        "Build: #42\n"
+        "Branch: origin/main\n"
+        "Commit: a321775\n"
+        "Duration: 1 min 5 sec\n"
+        "Link: http://localhost:8080/job/projeto-qualidade/42/\n"
+    )
+
+
+def test_build_body_outside_jenkins_skips_the_missing_details():
+    assert notify_email.build_body("SUCCESS", {}) == (
+        "Build status: SUCCESS\n\nJob: projeto-qualidade\n"
+    )
+
+
+def test_build_body_falls_back_to_the_branch_parameter():
+    body = notify_email.build_body("SUCCESS", {"BRANCH": "feat/notify-email"})
+
+    assert "Branch: feat/notify-email\n" in body
+
+
+# build_message
+
+
+def test_build_message_sets_the_headers_and_the_body():
+    config = make_config(recipients=("ana@example.com", "bruno@example.com"))
+
+    message = notify_email.build_message(config, "[SUCCESS] job #1", "Body\n")
+
+    assert message["From"] == "bot@example.com"
+    assert message["To"] == "ana@example.com, bruno@example.com"
+    assert message["Subject"] == "[SUCCESS] job #1"
+    assert message.get_content() == "Body\n"
