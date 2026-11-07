@@ -1,0 +1,13 @@
+# Jenkins security, read by Configuration as Code (JCasC).
+# The admin credentials come from the environment (.env, through Compose);
+# this file never holds a password.
+jenkins:
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "${JENKINS_ADMIN_ID}"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
