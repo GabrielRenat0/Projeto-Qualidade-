@@ -2,6 +2,8 @@
 # The admin credentials come from the environment (.env, through Compose);
 # this file never holds a password.
 jenkins:
+  numExecutors: 2
+  mode: NORMAL
   securityRealm:
     local:
       allowsSignup: false
@@ -11,3 +13,7 @@ jenkins:
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
