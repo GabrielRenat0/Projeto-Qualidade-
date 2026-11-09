@@ -13,7 +13,10 @@ pipeline {
     stages {
         stage('Setup') {
             steps {
-                echo 'Placeholder owned by B (Gabriel Renato): create the venv and install requirements.txt'
+                // Start clean, so a build never publishes reports or packages left by an older one.
+                sh 'rm -rf reports dist build *.egg-info'
+                sh 'python3 -m venv --clear .venv'
+                sh '.venv/bin/pip install -r requirements.txt'
             }
         }
 
