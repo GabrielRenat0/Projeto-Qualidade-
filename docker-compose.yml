@@ -1,0 +1,45 @@
+name: projeto-qualidade
+
+# Each service below is a placeholder owned by one team member (see docs/PLANO_NP2.md).
+# Replace only your own block. Placeholders live in the inactive "placeholder" profile,
+# so `docker compose up` ignores them until they are replaced.
+
+services:
+  # --- jenkins | owner: C | phase 1 ---------------------------------------------
+  # Image: <dockerhub-user>/projeto-qualidade-jenkins:1.0.0 (pinned tag, never latest)
+  # Port 8080. Volume jenkins_home:/var/jenkins_home.
+  # Env: JENKINS_ADMIN_ID, JENKINS_ADMIN_PASSWORD, REPO_URL, NOTIFY_EMAIL_TO, SMTP_*.
+  jenkins:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+  # --- tests | owner: A | phase 1 -----------------------------------------------
+  # Built from the local Dockerfile. Writes reports to the reports volume.
+  tests:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+  # --- reports | owner: B | phase 1 ---------------------------------------------
+  # nginx (alpine, pinned tag) on port 8081, serving the reports volume read-only.
+  # Mount it with `volume: {nocopy: true}` so nginx never copies its own files into it.
+  reports:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+  # --- mailpit | owner: D | phase 1 ---------------------------------------------
+  # axllent/mailpit (pinned tag). UI on 8025; SMTP 1025 only inside the network.
+  # Volume mailpit_data. The only service that receives GMAIL_USER/GMAIL_APP_PASSWORD.
+  mailpit:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+  # --- k6 | owner: A | phase 2 (bonus) ------------------------------------------
+  # grafana/k6 (pinned tag) under the "perf" profile. Writes to the reports volume.
+  k6:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+volumes:
+  jenkins_home:
+  reports:
+  mailpit_data:
