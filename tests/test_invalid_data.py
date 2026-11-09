@@ -104,15 +104,17 @@ def test_tc017_create_post_with_invalid_types(api, payloads):
 
 
 def test_tc018_update_nonexistent_post(api, payloads):
-    """TC-018 - PUT /posts/999999 should return 500, showing the mock crashes when updating a nonexistent resource."""
+    """TC-018 - PUT /posts/999999 should return 404 for a nonexistent resource."""
     post_id = payloads["nonexistent_post_id"]
     put_payload = payloads["update_nonexistent_post"]
 
     response = api.put(f"/posts/{post_id}", json=put_payload)
 
-    # Observed mock behavior: it returns 500 for a nonexistent post; a real API would typically return 404.
-    assert response.status_code == HTTPStatus.INTERNAL_SERVER_ERROR
-    assert "text/html" in response.headers["Content-Type"]
+    # Until September 2026 the mock crashed here with a 500 HTML page; since
+    # November 2026 it answers like a real API, with 404 and an empty JSON object.
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    body = assert_json(response)
+    assert body == {}
 
 
 def test_tc019_create_post_with_malformed_json(api, payloads):
