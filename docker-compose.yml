@@ -1,6 +1,6 @@
 name: projeto-qualidade
 
-# Each service below is a placeholder owned by one team member (see docs/PLANO_NP2.md).
+# Each service below is a placeholder owned by one team member.
 # Replace only your own block. Placeholders live in the inactive "placeholder" profile,
 # so `docker compose up` ignores them until they are replaced.
 
