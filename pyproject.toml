@@ -1,0 +1,20 @@
+# Packaging only: builds the versioned package of the test suite with python -m build.
+[build-system]
+requires = ["setuptools==84.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "projeto-qualidade"
+version = "2.0.0"
+description = "Automated test suite for the JSONPlaceholder public API (S07 - INATEL)"
+readme = "README.md"
+requires-python = ">=3.11"
+dynamic = ["dependencies"]
+
+[tool.setuptools]
+# Listed explicitly: the flat layout has several top-level folders (data, docs, perf,
+# reports, tests) that are not Python packages, so automatic discovery would fail.
+py-modules = ["conftest", "helpers"]
+
+[tool.setuptools.dynamic]
+dependencies = { file = ["requirements.txt"] }

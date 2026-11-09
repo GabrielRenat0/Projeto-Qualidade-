@@ -1,0 +1,5 @@
+# The .tar.gz ships the whole suite: tests, test data, k6 scripts and configuration.
+include requirements.txt pytest.ini
+recursive-include tests *.py
+recursive-include data *.json
+recursive-include perf *.js
