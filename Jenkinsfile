@@ -22,7 +22,15 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Placeholder owned by B (Gabriel Renato): run pytest, publish JUnit and archive reports'
+                // Same command as on a laptop and in the tests container; the rest comes from pytest.ini.
+                sh '.venv/bin/pytest --junitxml=reports/junit.xml'
+            }
+            post {
+                // Runs even when a test fails, so the results and reports are always kept.
+                always {
+                    junit testResults: 'reports/junit.xml', allowEmptyResults: true
+                    archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+                }
             }
         }
 
