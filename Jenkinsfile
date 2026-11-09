@@ -1,6 +1,6 @@
 // Declarative pipeline for the NP2 delivery.
-// Phase 0 skeleton: each stage and the post block only mark who owns that place.
-// Each owner replaces only the echo in their own place.
+// Setup, Test and Build: B (Gabriel Renato). post { always }: D (Ian Romancini).
+// Each owner edits only their own place.
 pipeline {
     agent any
 
@@ -36,7 +36,9 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo 'Placeholder owned by B (Gabriel Renato): run python -m build and archive dist/*'
+                sh '.venv/bin/python -m build'
+                // The fingerprint records the MD5 of each package, so Jenkins can trace it later.
+                archiveArtifacts artifacts: 'dist/*', fingerprint: true
             }
         }
     }
