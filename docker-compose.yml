@@ -14,10 +14,13 @@ services:
     profiles: [placeholder]
 
   # --- tests | owner: A | phase 1 -----------------------------------------------
-  # Built from the local Dockerfile. Writes reports to the reports volume.
+  # Built from the local Dockerfile. Runs the suite once and exits (a job container).
   tests:
-    image: alpine:3.20
-    profiles: [placeholder]
+    build: .
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-https://jsonplaceholder.typicode.com}
+    volumes:
+      - reports:/app/reports
 
   # --- reports | owner: B | phase 1 ---------------------------------------------
   # nginx (alpine, pinned tag) on port 8081, serving the reports volume read-only.
