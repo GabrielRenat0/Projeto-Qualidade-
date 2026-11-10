@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from collections import Counter, defaultdict
 from html import escape
+import os
 import re
 from typing import Any
 
@@ -9,7 +10,7 @@ import requests
 
 from helpers import load_payloads
 
-BASE_URL = "https://jsonplaceholder.typicode.com"
+BASE_URL = os.environ.get("API_BASE_URL") or "https://jsonplaceholder.typicode.com"
 REQUEST_TIMEOUT_SECONDS = 10
 DEFAULT_HEADERS = {"Content-Type": "application/json"}
 
