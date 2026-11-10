@@ -1,0 +1,37 @@
+# The pipeline job, read by Configuration as Code (JCasC) and created with Job DSL.
+# The repository comes from the environment (.env, through Compose);
+# the job is never created or changed through the Jenkins interface.
+jobs:
+  - script: |
+      pipelineJob('projeto-qualidade') {
+        description('Runs the Jenkinsfile of the repository: tests with the coverage gate, the package and the e-mail.')
+        parameters {
+          stringParam('BRANCH', 'main', 'Branch of the repository to build.')
+        }
+        properties {
+          pipelineTriggers {
+            triggers {
+              // Checks GitHub every 5 minutes and builds only when there is a new commit.
+              pollSCM {
+                scmpoll_spec('H/5 * * * *')
+              }
+            }
+          }
+        }
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url('${REPO_URL}')
+                }
+                // The ^ stops JCasC from resolving it, so each build reads the BRANCH parameter.
+                branch('*/^${BRANCH}')
+              }
+            }
+            scriptPath('Jenkinsfile')
+            // A full checkout: the lightweight one does not resolve the BRANCH parameter.
+            lightweight(false)
+          }
+        }
+      }
