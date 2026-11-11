@@ -67,6 +67,35 @@
 
 > Seção em construção. Responsável: Gabriel Baldoni.
 
+### Imagem no Docker Hub
+
+A imagem do Jenkins está publicada em
+[baldonigabriel/projeto-qualidade-jenkins](https://hub.docker.com/r/baldonigabriel/projeto-qualidade-jenkins),
+com a tag fixa `1.0.0`, que é a usada pelo `docker-compose.yml`, e a `latest` apontando para a
+mesma versão. Ela é construída a partir da pasta `jenkins/`: o `Dockerfile`, os plugins do
+`plugins.txt` e a configuração como código de `jenkins/casc/`, com o admin no `security.yaml`
+e o job no `jobs.yaml`.
+
+Para baixar a imagem e subir o Jenkins:
+
+```bash
+docker compose pull jenkins
+docker compose up -d jenkins
+```
+
+Para publicar uma versão nova (só quem tem acesso à conta do Docker Hub):
+
+```bash
+docker build -t baldonigabriel/projeto-qualidade-jenkins:1.0.0 -t baldonigabriel/projeto-qualidade-jenkins:latest jenkins/
+docker login
+docker push baldonigabriel/projeto-qualidade-jenkins:1.0.0
+docker push baldonigabriel/projeto-qualidade-jenkins:latest
+```
+
+Toda mudança no `jenkins/Dockerfile`, no `plugins.txt` ou em `jenkins/casc/` gera uma tag nova
+(por exemplo, `1.1.0`), e o `docker-compose.yml` passa a usar essa tag. A `1.0.0` continua
+publicada, para dar para voltar à versão anterior.
+
 ---
 
 ## Testes e cobertura
