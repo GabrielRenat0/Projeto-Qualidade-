@@ -11,10 +11,13 @@ import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from email.message import EmailMessage
+from pathlib import Path
 
 TRUE_VALUES = {"1", "true", "yes", "on"}
 DEFAULT_JOB_NAME = "projeto-qualidade"
 SMTP_TIMEOUT_SECONDS = 30
+# Docker creates this file in every container, so it marks the tests container.
+CONTAINER_MARKER = Path("/.dockerenv")
 
 
 class ConfigError(Exception):
@@ -66,14 +69,29 @@ def load_config(env: Mapping[str, str] = os.environ) -> EmailConfig:
     )
 
 
-def build_subject(status: str, env: Mapping[str, str] = os.environ) -> str:
-    """Return the subject line with the build status and, when known, its number."""
+def detect_origin(
+    env: Mapping[str, str] = os.environ, container_marker: Path = CONTAINER_MARKER
+) -> str:
+    """Return where the script runs: the Jenkins pipeline, the tests container or a laptop."""
+    # Jenkins sets JENKINS_URL in every build; the Jenkins container alone does not.
+    if env.get("JENKINS_URL"):
+        return "Jenkins"
+    if container_marker.exists():
+        return "tests container"
+    return "local machine"
+
+
+def build_subject(status: str, env: Mapping[str, str] = os.environ, origin: str = "") -> str:
+    """Return the subject line with the build status and, when known, its number and origin."""
     job = env.get("JOB_NAME") or DEFAULT_JOB_NAME
     subject = f"[{status.strip().upper()}] {job}"
 
     build_number = env.get("BUILD_NUMBER")
     if build_number:
         subject += f" #{build_number}"
+
+    if origin:
+        subject += f" ({origin})"
 
     return subject
 
@@ -132,9 +150,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
         print(f"notify_email: configuration error: {error}", file=sys.stderr)
         return 2
 
-    message = build_message(
-        config, build_subject(args.status, env), build_body(args.status, env)
-    )
+    subject = build_subject(args.status, env, detect_origin(env))
+    message = build_message(config, subject, build_body(args.status, env))
 
     try:
         send_message(config, message)

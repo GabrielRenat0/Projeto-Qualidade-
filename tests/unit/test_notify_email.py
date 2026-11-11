@@ -20,6 +20,7 @@ GMAIL_ENV = {
 }
 
 JENKINS_ENV = {
+    "JENKINS_URL": "http://localhost:8080/",
     "JOB_NAME": "projeto-qualidade",
     "BUILD_NUMBER": "42",
     "GIT_BRANCH": "origin/main",
@@ -135,6 +136,34 @@ def test_build_subject_outside_jenkins_uses_the_default_job():
     assert notify_email.build_subject(" failure ", {}) == "[FAILURE] projeto-qualidade"
 
 
+def test_build_subject_ends_with_the_origin():
+    subject = notify_email.build_subject("SUCCESS", JENKINS_ENV, "Jenkins")
+
+    assert subject == "[SUCCESS] projeto-qualidade #42 (Jenkins)"
+
+
+# detect_origin
+
+
+def test_detect_origin_in_a_jenkins_build(tmp_path):
+    # The Jenkins container is also a container, but the build variables win.
+    marker = tmp_path / ".dockerenv"
+    marker.touch()
+
+    assert notify_email.detect_origin(JENKINS_ENV, marker) == "Jenkins"
+
+
+def test_detect_origin_in_the_tests_container(tmp_path):
+    marker = tmp_path / ".dockerenv"
+    marker.touch()
+
+    assert notify_email.detect_origin({}, marker) == "tests container"
+
+
+def test_detect_origin_on_a_local_machine(tmp_path):
+    assert notify_email.detect_origin({}, tmp_path / ".dockerenv") == "local machine"
+
+
 def test_build_body_lists_the_jenkins_details():
     body = notify_email.build_body("FAILURE", JENKINS_ENV)
 
@@ -214,9 +243,12 @@ def test_main_sends_the_success_email(smtp, capsys):
 
     assert exit_code == 0
     message = session_of(smtp).send_message.call_args.args[0]
-    assert message["Subject"] == "[SUCCESS] projeto-qualidade #42"
+    assert message["Subject"] == "[SUCCESS] projeto-qualidade #42 (Jenkins)"
     assert "Build status: SUCCESS" in message.get_content()
-    assert "sent '[SUCCESS] projeto-qualidade #42' to 2 recipient(s)" in capsys.readouterr().out
+    assert (
+        "sent '[SUCCESS] projeto-qualidade #42 (Jenkins)' to 2 recipient(s)"
+        in capsys.readouterr().out
+    )
 
 
 def test_main_sends_the_failure_email(smtp):
@@ -224,7 +256,7 @@ def test_main_sends_the_failure_email(smtp):
 
     assert exit_code == 0
     message = session_of(smtp).send_message.call_args.args[0]
-    assert message["Subject"] == "[FAILURE] projeto-qualidade #42"
+    assert message["Subject"] == "[FAILURE] projeto-qualidade #42 (Jenkins)"
     assert "Build status: FAILURE" in message.get_content()
 
 
