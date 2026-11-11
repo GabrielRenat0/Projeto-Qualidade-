@@ -31,10 +31,30 @@ services:
 
   # --- tests | owner: A | phase 1 -----------------------------------------------
   # Built from the local Dockerfile. Runs the suite once and exits (a job container).
+  # Then e-mails the result through mailpit; the exit code stays the suite's.
   tests:
     build: .
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        pytest --junitxml=reports/junit.xml
+        code=$$?
+        if [ "$$code" -eq 0 ]; then status=SUCCESS; else status=FAILURE; fi
+        python3 scripts/notify_email.py --status "$$status"
+        exit "$$code"
     environment:
       API_BASE_URL: ${API_BASE_URL:-https://jsonplaceholder.typicode.com}
+      NOTIFY_EMAIL_TO: ${NOTIFY_EMAIL_TO}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_STARTTLS: ${SMTP_STARTTLS}
+      SMTP_FROM: ${SMTP_FROM}
     volumes:
       - reports:/app/reports
 
