@@ -1,6 +1,7 @@
 """Unit tests for the test and coverage summary of ``scripts/notify_email.py``."""
 
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -146,3 +147,45 @@ def test_the_default_reports_folder_sits_next_to_the_scripts_folder():
 
     assert notify_email.REPORTS_DIR.name == "reports"
     assert (repository_root / "scripts" / "notify_email.py").is_file()
+
+
+# The summary in the e-mail body
+
+EMAIL_ENV = {"NOTIFY_EMAIL_TO": "ana@example.com", "SMTP_FROM": "bot@example.com"}
+
+
+def send_and_read_body(monkeypatch, reports_dir: Path, status: str) -> str:
+    """Run the script with a fake SMTP server and return the body of the e-mail it sends."""
+    monkeypatch.setattr(notify_email, "REPORTS_DIR", reports_dir)
+    with mock.patch.object(notify_email.smtplib, "SMTP") as smtp_class:
+        exit_code = notify_email.main(["--status", status], EMAIL_ENV)
+
+    assert exit_code == 0
+    session = smtp_class.return_value.__enter__.return_value
+    return session.send_message.call_args.args[0].get_content()
+
+
+def test_main_adds_the_summary_after_the_build_details(tmp_path, monkeypatch):
+    body = send_and_read_body(monkeypatch, write_reports(tmp_path), "SUCCESS")
+
+    assert body == (
+        "Build status: SUCCESS\n"
+        "\n"
+        "Job: projeto-qualidade\n"
+        "\n"
+        "Tests: 95 (passed: 89, failed: 2, errors: 1, skipped: 3)\n"
+        "Coverage: 98.99%\n"
+    )
+
+
+def test_main_still_sends_the_email_when_the_reports_were_not_generated(tmp_path, monkeypatch):
+    body = send_and_read_body(monkeypatch, tmp_path / "reports", "FAILURE")
+
+    assert body == (
+        "Build status: FAILURE\n"
+        "\n"
+        "Job: projeto-qualidade\n"
+        "\n"
+        "Tests: report not generated (reports/junit.xml)\n"
+        "Coverage: report not generated (reports/coverage.xml)\n"
+    )

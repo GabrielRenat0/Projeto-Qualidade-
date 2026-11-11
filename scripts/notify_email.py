@@ -198,7 +198,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
         return 2
 
     subject = build_subject(args.status, env, detect_origin(env))
-    message = build_message(config, subject, build_body(args.status, env))
+    body = build_body(args.status, env) + "\n" + build_report_summary(REPORTS_DIR)
+    message = build_message(config, subject, body)
 
     try:
         send_message(config, message)
