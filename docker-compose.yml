@@ -1,0 +1,73 @@
+name: projeto-qualidade
+
+# Each service below is a placeholder owned by one team member.
+# Replace only your own block. Placeholders live in the inactive "placeholder" profile,
+# so `docker compose up` ignores them until they are replaced.
+
+services:
+  # --- jenkins | owner: C | phase 1 ---------------------------------------------
+  # Image: <dockerhub-user>/projeto-qualidade-jenkins:1.0.0 (pinned tag, never latest)
+  # Port 8080. Volume jenkins_home:/var/jenkins_home.
+  # Env: JENKINS_ADMIN_ID, JENKINS_ADMIN_PASSWORD, REPO_URL, NOTIFY_EMAIL_TO, SMTP_*.
+  jenkins:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+  # --- tests | owner: A | phase 1 -----------------------------------------------
+  # Built from the local Dockerfile. Runs the suite once and exits (a job container).
+  tests:
+    build: .
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-https://jsonplaceholder.typicode.com}
+    volumes:
+      - reports:/app/reports
+
+  # --- reports | owner: B | phase 1 ---------------------------------------------
+  # nginx (alpine, pinned tag) on port 8081, serving the reports volume read-only.
+  # Mount it with `volume: {nocopy: true}` so nginx never copies its own files into it.
+  reports:
+    image: nginx:1.30.6-alpine
+    ports:
+      - "8081:80"
+    volumes:
+      - type: volume
+        source: reports
+        target: /usr/share/nginx/html
+        read_only: true
+        volume:
+          nocopy: true
+      # Replaces the image's default site to turn on the directory listing.
+      - ./nginx/reports.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # --- mailpit | owner: D | phase 1 ---------------------------------------------
+  # Receives every e-mail on SMTP 1025 (reachable only inside the Compose network),
+  # keeps a copy visible on http://localhost:8025 and relays it to Gmail.
+  # The only service that receives GMAIL_USER and GMAIL_APP_PASSWORD.
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    restart: unless-stopped
+    ports:
+      # Localhost only: the UI has no login and shows every pipeline e-mail.
+      - "127.0.0.1:8025:8025"
+    volumes:
+      - mailpit_data:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+      MP_SMTP_RELAY_HOST: smtp.gmail.com
+      MP_SMTP_RELAY_PORT: "587"
+      MP_SMTP_RELAY_STARTTLS: "true"
+      MP_SMTP_RELAY_AUTH: plain
+      MP_SMTP_RELAY_USERNAME: ${GMAIL_USER}
+      MP_SMTP_RELAY_PASSWORD: ${GMAIL_APP_PASSWORD}
+      MP_SMTP_RELAY_ALL: "true"
+
+  # --- k6 | owner: A | phase 2 (bonus) ------------------------------------------
+  # grafana/k6 (pinned tag) under the "perf" profile. Writes to the reports volume.
+  k6:
+    image: alpine:3.20
+    profiles: [placeholder]
+
+volumes:
+  jenkins_home:
+  reports:
+  mailpit_data:

@@ -1,3 +1,15 @@
 .venv/
 __pycache__/
 .pytest_cache/
+
+# Generated reports (Jenkins artifacts and the reports volume)
+reports/
+
+# Local secrets
+.env
+
+# Python packaging and coverage outputs
+dist/
+build/
+*.egg-info/
+.coverage

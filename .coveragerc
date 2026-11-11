@@ -1,0 +1,12 @@
+# Coverage of the code we wrote. The API is third-party, so it is not measured.
+[run]
+# A directory in "source" (scripts) also reports files that no test imports, as 0%.
+source =
+    conftest
+    helpers
+    reporting
+    scripts
+
+[report]
+fail_under = 90
+show_missing = True
