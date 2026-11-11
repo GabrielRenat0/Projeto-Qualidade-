@@ -14,7 +14,7 @@ dynamic = ["dependencies"]
 [tool.setuptools]
 # Listed explicitly: the flat layout has several top-level folders (data, docs, perf,
 # reports, tests) that are not Python packages, so automatic discovery would fail.
-py-modules = ["conftest", "helpers"]
+py-modules = ["conftest", "helpers", "reporting"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
