@@ -1,5 +1,9 @@
 # The .tar.gz ships the whole suite: tests, test data, k6 scripts and configuration.
-include requirements.txt pytest.ini
+include requirements.txt pytest.ini .coveragerc
 recursive-include tests *.py
 recursive-include data *.json
 recursive-include perf *.js
+recursive-include scripts *.py
+# Pipeline files read by the configuration tests (the same paths they scan).
+include Jenkinsfile docker-compose.yml
+recursive-include jenkins/casc *.yaml
