@@ -202,7 +202,7 @@ def test_build_message_sets_the_headers_and_the_body():
     assert message["From"] == "bot@example.com"
     assert message["To"] == "ana@example.com, bruno@example.com"
     assert message["Subject"] == "[SUCCESS] job #1"
-    assert message.get_content() == "Body\n"
+    assert message.get_body().get_content() == "Body\n"
 
 
 # send_message
@@ -244,7 +244,7 @@ def test_main_sends_the_success_email(smtp, capsys):
     assert exit_code == 0
     message = session_of(smtp).send_message.call_args.args[0]
     assert message["Subject"] == "[SUCCESS] projeto-qualidade #42 (Jenkins)"
-    assert "Build status: SUCCESS" in message.get_content()
+    assert "Build status: SUCCESS" in message.get_body().get_content()
     assert (
         "sent '[SUCCESS] projeto-qualidade #42 (Jenkins)' to 2 recipient(s)"
         in capsys.readouterr().out
@@ -257,7 +257,7 @@ def test_main_sends_the_failure_email(smtp):
     assert exit_code == 0
     message = session_of(smtp).send_message.call_args.args[0]
     assert message["Subject"] == "[FAILURE] projeto-qualidade #42 (Jenkins)"
-    assert "Build status: FAILURE" in message.get_content()
+    assert "Build status: FAILURE" in message.get_body().get_content()
 
 
 def test_main_without_recipients_fails_without_connecting(smtp, capsys):
