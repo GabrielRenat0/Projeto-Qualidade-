@@ -98,10 +98,20 @@ services:
       MP_SMTP_RELAY_ALL: "true"
 
   # --- k6 | owner: A | phase 2 (bonus) ------------------------------------------
-  # grafana/k6 (pinned tag) under the "perf" profile. Writes to the reports volume.
+  # Load and stress tests from NP1. Not started by `docker compose up` (perf profile).
+  # Run the tests service once before it, so the reports volume already exists.
   k6:
-    image: alpine:3.20
-    profiles: [placeholder]
+    image: grafana/k6:2.2.0
+    profiles: [perf]
+    # Same UID as the tests user, which owns the reports volume.
+    user: "1000:1000"
+    environment:
+      BASE_URL: ${API_BASE_URL:-https://jsonplaceholder.typicode.com}
+      RESULTS_DIR: /reports
+      K6_WEB_DASHBOARD: "true"
+    volumes:
+      - ./perf:/perf:ro
+      - reports:/reports
 
 volumes:
   jenkins_home:
