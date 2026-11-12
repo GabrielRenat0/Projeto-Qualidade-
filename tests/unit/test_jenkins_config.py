@@ -14,6 +14,7 @@ pytestmark = pytest.mark.unit
 ROOT = Path(__file__).resolve().parents[2]
 PLUGINS_FILE = ROOT / "jenkins" / "plugins.txt"
 CASC_DIR = ROOT / "jenkins" / "casc"
+JOBS_FILE = CASC_DIR / "jobs.yaml"
 
 # The plugins that the pipeline and the configuration as code rely on (the project contract).
 CONTRACT_PLUGINS = {
@@ -90,6 +91,19 @@ def casc_secrets() -> list[tuple[str, object]]:
         for path in casc_files()
         for key, value in find_secrets(yaml.safe_load(path.read_text(encoding="utf-8")))
     ]
+
+
+# The job of the project contract, as the Job DSL script in jobs.yaml declares it.
+CONTRACT_JOB = "projeto-qualidade"
+PIPELINE_JOB = re.compile(r"pipelineJob\(\s*['\"]([^'\"]+)['\"]\s*\)")
+STRING_PARAMETER = re.compile(r"stringParam\(\s*['\"]([^'\"]+)['\"]\s*,\s*['\"]([^'\"]*)['\"]")
+REPOSITORY_URL = re.compile(r"\burl\(\s*['\"]([^'\"]+)['\"]\s*\)")
+
+
+def job_scripts() -> str:
+    """Return the Job DSL scripts of ``jobs.yaml``, joined in one text."""
+    document = yaml.safe_load(JOBS_FILE.read_text(encoding="utf-8"))
+    return "\n".join(job["script"] for job in document["jobs"])
 
 
 # The pin detector itself
@@ -191,3 +205,20 @@ def test_the_admin_password_comes_from_the_contract_variable():
     from_the_contract = any(value == "${JENKINS_ADMIN_PASSWORD}" for _, value in casc_secrets())
 
     assert from_the_contract, "the admin password must be ${JENKINS_ADMIN_PASSWORD}"
+
+
+# jenkins/casc/jobs.yaml
+
+
+def test_the_job_has_the_contract_name():
+    assert PIPELINE_JOB.findall(job_scripts()) == [CONTRACT_JOB]
+
+
+def test_the_job_has_the_branch_parameter_with_main_as_default():
+    parameters = dict(STRING_PARAMETER.findall(job_scripts()))
+
+    assert parameters.get("BRANCH") == "main"
+
+
+def test_the_job_reads_the_repository_from_the_environment():
+    assert REPOSITORY_URL.findall(job_scripts()) == ["${REPO_URL}"]
