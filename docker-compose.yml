@@ -12,6 +12,10 @@ services:
   jenkins:
     image: baldonigabriel/projeto-qualidade-jenkins:1.0.0
     restart: unless-stopped
+    # The post of every build e-mails the result through mailpit, so it starts first.
+    depends_on:
+      mailpit:
+        condition: service_healthy
     ports:
       # Localhost only, like the mailpit UI.
       - "127.0.0.1:8080:8080"
