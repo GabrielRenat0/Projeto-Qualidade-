@@ -5,5 +5,5 @@ recursive-include data *.json
 recursive-include perf *.js
 recursive-include scripts *.py
 # Pipeline files read by the configuration tests (the same paths they scan).
-include Jenkinsfile docker-compose.yml
+include Jenkinsfile docker-compose.yml jenkins/plugins.txt
 recursive-include jenkins/casc *.yaml
