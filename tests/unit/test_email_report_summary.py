@@ -162,7 +162,9 @@ def send_and_read_body(monkeypatch, reports_dir: Path, status: str) -> str:
 
     assert exit_code == 0
     session = smtp_class.return_value.__enter__.return_value
-    return session.send_message.call_args.args[0].get_content()
+    message = session.send_message.call_args.args[0]
+    # The text part, so this also works when the e-mail carries an attachment.
+    return message.get_body(("plain",)).get_content()
 
 
 def test_main_adds_the_summary_after_the_build_details(tmp_path, monkeypatch):
