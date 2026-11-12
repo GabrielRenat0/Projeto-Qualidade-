@@ -16,6 +16,10 @@ from pathlib import Path
 TRUE_VALUES = {"1", "true", "yes", "on"}
 DEFAULT_JOB_NAME = "projeto-qualidade"
 SMTP_TIMEOUT_SECONDS = 30
+# Gmail accepts 25 MB per message; the report is usually a few hundred KB.
+MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
+# Relative to the working directory, like the pytest command that writes the report.
+REPORT_PATH = Path("reports/report.html")
 # Docker creates this file in every container, so it marks the tests container.
 CONTAINER_MARKER = Path("/.dockerenv")
 
@@ -122,7 +126,44 @@ def build_message(config: EmailConfig, subject: str, body: str) -> EmailMessage:
     message["To"] = ", ".join(config.recipients)
     message["Subject"] = subject
     message.set_content(body)
+    attach_report(message)
     return message
+
+
+def attach_report(
+    message: EmailMessage,
+    report_path: Path = REPORT_PATH,
+    max_bytes: int = MAX_ATTACHMENT_BYTES,
+) -> bool:
+    """Attach the HTML test report when it exists and fits in an e-mail."""
+    # A build that fails before the tests has no report, and its e-mail still goes out.
+    if not report_path.is_file():
+        return False
+
+    size = report_path.stat().st_size
+    if size > max_bytes:
+        print(
+            f"notify_email: report not attached: {size} bytes exceeds the {max_bytes} limit",
+            file=sys.stderr,
+        )
+        return False
+
+    try:
+        content = report_path.read_bytes()
+    except OSError as error:
+        # An unreadable report must not stop the notification.
+        print(f"notify_email: report not attached: {error}", file=sys.stderr)
+        return False
+
+    message.add_attachment(
+        content,
+        maintype="text",
+        subtype="html",
+        filename="report.html",
+        # pytest-html writes the report in UTF-8.
+        params={"charset": "utf-8"},
+    )
+    return True
 
 
 def send_message(config: EmailConfig, message: EmailMessage) -> None:
