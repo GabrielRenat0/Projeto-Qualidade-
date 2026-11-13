@@ -8,6 +8,7 @@ import argparse
 import os
 import smtplib
 import sys
+import xml.etree.ElementTree as ET
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from email.message import EmailMessage
@@ -22,6 +23,8 @@ MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
 REPORT_PATH = Path("reports/report.html")
 # Docker creates this file in every container, so it marks the tests container.
 CONTAINER_MARKER = Path("/.dockerenv")
+# The pipeline and the tests container write their reports here, next to scripts/.
+REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
 
 class ConfigError(Exception):
@@ -119,6 +122,50 @@ def build_body(status: str, env: Mapping[str, str] = os.environ) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _test_totals(junit_path: Path) -> str:
+    """Return the totals of the JUnit report that pytest writes."""
+    suites = list(ET.parse(junit_path).getroot().iter("testsuite"))
+    if not suites:
+        raise ValueError("the JUnit report has no testsuite element")
+
+    # pytest writes a single <testsuite>; adding them up also covers a report with several.
+    totals = {
+        name: sum(int(suite.get(name, 0)) for suite in suites)
+        for name in ("tests", "failures", "errors", "skipped")
+    }
+    passed = totals["tests"] - totals["failures"] - totals["errors"] - totals["skipped"]
+    return (
+        f"{totals['tests']} (passed: {passed}, failed: {totals['failures']}, "
+        f"errors: {totals['errors']}, skipped: {totals['skipped']})"
+    )
+
+
+def _coverage_percent(coverage_path: Path) -> str:
+    """Return the line coverage of the coverage.py XML report, as a percentage."""
+    # line-rate is the fraction of covered lines, e.g. 0.9899.
+    line_rate = float(ET.parse(coverage_path).getroot().attrib["line-rate"])
+    return f"{line_rate * 100:.2f}%"
+
+
+def build_report_summary(reports_dir: Path = REPORTS_DIR) -> str:
+    """Return the test and coverage lines for the body, read from ``reports_dir``."""
+    reports = [
+        ("Tests", "junit.xml", _test_totals),
+        ("Coverage", "coverage.xml", _coverage_percent),
+    ]
+    lines = []
+    for label, filename, summarize in reports:
+        # A missing or broken report becomes a notice, so the e-mail still goes out.
+        try:
+            value = summarize(reports_dir / filename)
+        except FileNotFoundError:
+            value = f"report not generated (reports/{filename})"
+        except (OSError, ET.ParseError, KeyError, ValueError):
+            value = f"report could not be read (reports/{filename})"
+        lines.append(f"{label}: {value}")
+    return "\n".join(lines) + "\n"
+
+
 def build_message(config: EmailConfig, subject: str, body: str) -> EmailMessage:
     """Assemble the e-mail with the sender, recipients, subject and body."""
     message = EmailMessage()
@@ -192,7 +239,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
         return 2
 
     subject = build_subject(args.status, env, detect_origin(env))
-    message = build_message(config, subject, build_body(args.status, env))
+    body = build_body(args.status, env) + "\n" + build_report_summary(REPORTS_DIR)
+    message = build_message(config, subject, body)
 
     try:
         send_message(config, message)
