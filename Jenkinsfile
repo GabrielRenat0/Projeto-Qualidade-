@@ -44,8 +44,17 @@ pipeline {
     }
 
     post {
+        // Runs on success and on failure, so the e-mail also reports a broken build.
         always {
-            echo 'Placeholder owned by D (Ian Romancini): send the e-mail with scripts/notify_email.py'
+            // The result and the duration are not environment variables, so they are passed here.
+            // While post runs, the duration still ends with " and counting".
+            withEnv([
+                "BUILD_STATUS=${currentBuild.currentResult}",
+                "BUILD_DURATION=${currentBuild.durationString.replace(' and counting', '')}",
+            ]) {
+                // The system python3, not the venv: the e-mail must go out even if Setup failed.
+                sh 'python3 scripts/notify_email.py --status "$BUILD_STATUS"'
+            }
         }
     }
 }
