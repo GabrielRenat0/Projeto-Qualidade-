@@ -19,8 +19,8 @@ DEFAULT_JOB_NAME = "projeto-qualidade"
 SMTP_TIMEOUT_SECONDS = 30
 # Gmail accepts 25 MB per message; the report is usually a few hundred KB.
 MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024
-# Relative to the working directory, like the pytest command that writes the report.
-REPORT_PATH = Path("reports/report.html")
+# The HTML report that pytest writes in the reports folder.
+REPORT_FILENAME = "report.html"
 # Docker creates this file in every container, so it marks the tests container.
 CONTAINER_MARKER = Path("/.dockerenv")
 # The pipeline and the tests container write their reports here, next to scripts/.
@@ -173,13 +173,15 @@ def build_message(config: EmailConfig, subject: str, body: str) -> EmailMessage:
     message["To"] = ", ".join(config.recipients)
     message["Subject"] = subject
     message.set_content(body)
-    attach_report(message)
+    # REPORTS_DIR is read on every call, never frozen in a default argument,
+    # so the tests can replace it with a temporary folder.
+    attach_report(message, REPORTS_DIR / REPORT_FILENAME)
     return message
 
 
 def attach_report(
     message: EmailMessage,
-    report_path: Path = REPORT_PATH,
+    report_path: Path,
     max_bytes: int = MAX_ATTACHMENT_BYTES,
 ) -> bool:
     """Attach the HTML test report when it exists and fits in an e-mail."""
@@ -206,7 +208,7 @@ def attach_report(
         content,
         maintype="text",
         subtype="html",
-        filename="report.html",
+        filename=REPORT_FILENAME,
         # pytest-html writes the report in UTF-8.
         params={"charset": "utf-8"},
     )

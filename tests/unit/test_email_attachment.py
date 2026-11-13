@@ -15,6 +15,15 @@ pytestmark = pytest.mark.unit
 REPORT_HTML = "<!DOCTYPE html><html><body><h1>Relatório: 20 passed</h1></body></html>\n"
 
 
+@pytest.fixture(autouse=True)
+def reports_dir(tmp_path, monkeypatch) -> Path:
+    """Point the script at an empty temporary reports folder, never the real one."""
+    folder = tmp_path / "reports"
+    folder.mkdir()
+    monkeypatch.setattr(notify_email, "REPORTS_DIR", folder)
+    return folder
+
+
 def make_message() -> EmailMessage:
     """Return a plain-text message, as the script has it before attaching anything."""
     message = EmailMessage()
@@ -141,11 +150,8 @@ def make_config() -> EmailConfig:
     )
 
 
-def test_build_message_attaches_the_report_of_the_working_directory(tmp_path, monkeypatch):
-    reports = tmp_path / "reports"
-    reports.mkdir()
-    write_report(reports)
-    monkeypatch.chdir(tmp_path)
+def test_build_message_attaches_the_report_of_the_reports_folder(reports_dir):
+    write_report(reports_dir)
 
     message = notify_email.build_message(make_config(), "[SUCCESS] job #1", "Body\n")
 
@@ -156,11 +162,23 @@ def test_build_message_attaches_the_report_of_the_working_directory(tmp_path, mo
     assert message.get_body().get_content() == "Body\n"
 
 
-def test_build_message_without_a_report_stays_plain_text(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
-
+def test_build_message_without_a_report_stays_plain_text():
     message = notify_email.build_message(make_config(), "[FAILURE] job #1", "Body\n")
 
     assert attachments_of(message) == []
     assert message.get_content_type() == "text/plain"
     assert message.get_content() == "Body\n"
+
+
+def test_build_message_reads_the_reports_folder_on_every_call(
+    reports_dir, tmp_path, monkeypatch
+):
+    write_report(reports_dir)
+    with_report = notify_email.build_message(make_config(), "subject", "Body\n")
+
+    # A path frozen when the script was imported would still find the first folder.
+    monkeypatch.setattr(notify_email, "REPORTS_DIR", tmp_path / "another-folder")
+    without_report = notify_email.build_message(make_config(), "subject", "Body\n")
+
+    assert len(attachments_of(with_report)) == 1
+    assert attachments_of(without_report) == []
