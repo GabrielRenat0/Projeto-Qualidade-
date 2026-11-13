@@ -98,10 +98,32 @@ services:
       MP_SMTP_RELAY_ALL: "true"
 
   # --- k6 | owner: A | phase 2 (bonus) ------------------------------------------
-  # grafana/k6 (pinned tag) under the "perf" profile. Writes to the reports volume.
+  # Load and stress tests from NP1. Not started by `docker compose up` (perf profile).
   k6:
-    image: alpine:3.20
-    profiles: [placeholder]
+    image: grafana/k6:2.2.0
+    profiles: [perf]
+    # Same UID as the tests user, which owns the reports volume.
+    user: "1000:1000"
+    # A reports volume first created by this service belongs to root: k6 could not save
+    # anything there and would still exit 0. So stop before the test, with a clear error.
+    # The tests service creates the volume with the right owner.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if ! [ -w "$$RESULTS_DIR" ]; then
+          echo "k6: cannot write to $$RESULTS_DIR. Run 'docker compose run --rm tests' once, then try again." >&2
+          exit 1
+        fi
+        exec k6 "$$@"
+      - k6
+    environment:
+      BASE_URL: ${API_BASE_URL:-https://jsonplaceholder.typicode.com}
+      RESULTS_DIR: /reports
+      K6_WEB_DASHBOARD: "true"
+    volumes:
+      - ./perf:/perf:ro
+      - reports:/reports
 
 volumes:
   jenkins_home:
