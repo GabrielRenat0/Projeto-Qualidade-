@@ -45,6 +45,12 @@ def make_config(**overrides) -> EmailConfig:
     return EmailConfig(**values)
 
 
+@pytest.fixture(autouse=True)
+def empty_reports_dir(tmp_path, monkeypatch):
+    """Point the script at a folder with no reports, so no test reads the real one."""
+    monkeypatch.setattr(notify_email, "REPORTS_DIR", tmp_path / "reports")
+
+
 @pytest.fixture
 def smtp():
     """Replace ``smtplib.SMTP`` and yield the fake SMTP class."""
