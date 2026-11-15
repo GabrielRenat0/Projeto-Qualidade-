@@ -1,7 +1,7 @@
 # Projeto Qualidade — Esteira DevOps da suíte de testes de API
 
-**Disciplina:** S07 - Gerência de Configuração e Evolução de Software  
-**Instituição:** INATEL  
+**Disciplina:** S07 - Gerência de Configuração e Evolução de Software
+**Instituição:** INATEL
 **Integrantes:**
 - Fabio Henrique
 - Gabriel Renato
@@ -357,7 +357,16 @@ e `test_email_report_summary.py`) usam um SMTP falso e rodam sem internet.
 
 ## Uso de IA
 
-> Tabela-resumo dos modelos usados pelo grupo em construção. Responsável: Ian Romancini.
+O grupo usou IA como apoio na NP2. A rubrica avalia honestidade e entendimento, então cada
+integrante declara abaixo o que usou, para quê, com prompts reais e o que fez sem IA. Ninguém
+commitou código gerado por IA que não saiba explicar.
+
+| Integrante | Ferramenta e modelo | Para que usou | Dinâmica |
+|---|---|---|---|
+| Fabio Henrique | Claude (Claude Code) — *modelo a confirmar* | Montagem do plano da NP2 (`PLANO_NP2.md`) a partir do enunciado e do repositório da NP1; *demais usos a confirmar* | *a confirmar* |
+| Gabriel Renato | *a confirmar* | *a confirmar* | *a confirmar* |
+| Gabriel Baldoni | *a confirmar* | *a confirmar* | *a confirmar* |
+| Ian Romancini | Claude Opus 5.5 (Claude Code) | Código e testes do e-mail (script, `mailpit`, `post` do Jenkinsfile, teste de e-mail fixo), `security.yaml`, diagnóstico do TC-018 e do build, revisão de PRs, documentação | Individual, em par com a ferramenta: ela escrevia, eu revisava, testava, pedia ajustes e aprovava cada commit |
 
 ### Declaração individual — Fabio Henrique
 
@@ -373,7 +382,89 @@ e `test_email_report_summary.py`) usam um SMTP falso e rodam sem internet.
 
 ### Declaração individual — Ian Romancini
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5, pelo Claude Code, com acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA como par de programação. A maior parte do código
+da minha parte foi escrita por ela, sempre em etapas pequenas que eu pedia na ordem do plano.
+Em cada etapa, a ferramenta explicava o que tinha feito; eu revisava o código, tirava as
+dúvidas, testava na minha máquina e pedia ajustes quando algo não estava como eu queria. Só
+depois disso eu autorizava o commit. A parte operacional ficou comigo: a conta Gmail, o
+`.env`, o Docker, os testes manuais e os builds no Jenkins. Nada foi commitado, enviado ou
+mergeado sem a minha aprovação.
+
+**Para que usei:**
+
+- código e testes do `scripts/notify_email.py`, do serviço `mailpit`, do
+  `jenkins/casc/security.yaml`, do e-mail no `post` do Jenkinsfile e do
+  `tests/unit/test_no_hardcoded_email.py`;
+- diagnóstico do TC-018 e de erros no build do Jenkins;
+- revisão dos PRs em que fui marcado;
+- escrita desta seção.
+
+**Prompts** (resumidos):
+
+1. **TC-018 falhando**
+
+   > "o teste 18 está dando erro, imagino que a ferramenta tenha atualizado, não retorna mais
+   > o 500, confirma pra mim se faz sentido a ferramenta ter atualizado mesmo."
+
+   **Resposta:** a IA confirmou a minha hipótese. O JSONPlaceholder passou a responder 404 em
+   vez de 500 ao atualizar um post que não existe.
+
+   **Resultado:** aceito. Ajustamos o teste e o Plano de Testes (PR #24).
+
+2. **Build do Jenkins com erro**
+
+   > "o build não rodou, me ajude a entender o que eu fiz de errado"
+
+   **Resposta:** o problema era o `SMTP_FROM` no `.env`, e o container do Jenkins precisava
+   ser recriado para ler o valor novo.
+
+   **Resultado:** aceito. Eu corrigi o `.env` e rodei o build de novo.
+
+3. **Conferência do envio**
+
+   > "Corrigi o ENV, e agora rodou, e os emails chegaram, confere se está certo"
+
+   **Resposta:** a IA conferiu o log do build e confirmou que ele passou corretamente.
+
+   **Resultado:** aceito. Os e-mails chegaram na caixa de entrada.
+
+4. **Commit sem autorização**
+
+   > "antes de dar commit me pergunta se pode, você criou uma branch pra isso?"
+
+   **Resposta:** a ferramenta tinha feito o primeiro commit do script sem me perguntar. Ela
+   confirmou que o trabalho estava numa branch própria e passou a pedir autorização antes de
+   cada commit.
+
+   **Resultado:** ajustado. A partir daí, todo commit, branch e push passou pela minha
+   aprovação.
+
+5. **Revisão do PR #41**
+
+   > "não aprova ainda, só confere se está certo" e, depois, "faz um texto pequeno explicando
+   > o erro", "menos técnico, pareça mais humano"
+
+   **Resposta:** a revisão mostrou que juntar os PRs #39, #40 e #41 quebrava 2 testes, porque
+   o anexo do relatório transforma a mensagem em multipart. A primeira explicação para o
+   colega veio técnica demais.
+
+   **Resultado:** descartado. Não deixei o PR ser aprovado antes de conferir, descartei o
+   primeiro texto e mandei uma versão mais simples.
+
+**O que fiz sem IA:**
+
+- criei a conta Gmail do projeto e a senha de app;
+- preenchi o `.env` local (que não é versionado);
+- rodei os testes manuais do script e conferi os e-mails na caixa de entrada;
+- operei o Docker Desktop e o Jenkins (builds, parâmetros e a prova de falha);
+- percebi que o TC-018 não batia mais com o comportamento da API, levantei a hipótese da
+  mudança e pedi a correção do teste;
+- barrei a aprovação do PR #41 e pedi a verificação que achou os 2 testes quebrados na junção
+  dos PRs;
+- ajustei à mão o texto de alguns PRs, escolhi os revisores e tomei as decisões de aprovar e
+  mergear.
 
 ---
 
@@ -386,7 +477,7 @@ Plano de Testes da NP1 está em [`docs/np1/`](docs/np1/), com o PDF montado em
 
 ### Descrição do SUT (System Under Test)
 
-O sistema testado (SUT) é o **JSONPlaceholder** (https://jsonplaceholder.typicode.com). 
+O sistema testado (SUT) é o **JSONPlaceholder** (https://jsonplaceholder.typicode.com).
 Trata-se de uma API REST pública e gratuita que simula um backend real com rotas de um blog (posts, comentários, usuários, tarefas, etc.). A API foi escolhida por permitir a realização de requisições reais (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) de forma consistente e sem a necessidade de autenticação.
 
 Os recursos cobertos pela nossa suíte de testes incluem:
