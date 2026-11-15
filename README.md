@@ -264,7 +264,100 @@ Os TCs parametrizados (TC-002 e TC-011) geram 23 execuções no total.
 
 ### Declaração individual — Gabriel Renato
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5 e Claude Fable 5.2, pelo Claude Code (extensão do VS Code), com
+acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA como par de programação. A maior parte do código
+da minha parte foi escrita por ela, em etapas pequenas, na ordem do plano. Antes de cada etapa,
+ela mostrava quais arquivos ia mexer, quais não ia tocar e como ia verificar, e só seguia com o
+meu "ok". Depois, rodava as verificações (testes, Docker, um Jenkins descartável) e explicava cada
+parte do código e as perguntas que o professor poderia fazer. Eu revisava, tirava as dúvidas e
+pedia ajustes. Todos os commits, pushes e PRs foram feitos por mim, e nada foi para o GitHub sem a
+minha aprovação.
+
+**Para que usei:**
+
+- o `Jenkinsfile` (o esqueleto e os stages Setup, Test e Build, com o arquivamento), o
+  `pyproject.toml` e o `MANIFEST.in`, o `pytest.ini` e o `.coveragerc`, o `API_BASE_URL` no
+  `conftest.py` e o serviço `reports`, com o `nginx/reports.conf`;
+- na Fase 2, o resumo dos testes e da cobertura no e-mail e o
+  `tests/unit/test_jenkins_config.py`;
+- verificações: Jenkins e Mailpit descartáveis no Docker, provas de falha, o `pytest` rodado de
+  dentro do pacote e a simulação de merge dos PRs abertos;
+- revisão dos PRs do Gabriel Baldoni e do #40 do Ian;
+- textos de commits, de PRs e de mensagens para o grupo;
+- escrita da seção "Testes e cobertura" e desta declaração.
+
+**Prompts** (resumidos e reescritos):
+
+1. **Listagem de arquivos no serviço `reports`**
+
+   > "Com base no plano da NP2, compare as duas formas de ligar a listagem de arquivos do nginx no
+   > serviço `reports` e recomende uma."
+
+   **Resposta:** a IA recomendou um arquivo de configuração próprio, o `nginx/reports.conf`,
+   montado só para leitura, em vez de um comando dentro do Compose. Os motivos: é mais fácil de
+   ler e de explicar, segue o padrão de configuração versionada do plano e mantém a imagem oficial
+   do nginx sem mudar o comando de inicialização dela.
+
+   **Resultado:** aceito. Antes do commit, a IA subiu o serviço e provou a listagem no 8081, o
+   volume só para leitura e o container `tests` gravando os relatórios nele.
+
+2. **Roteiro de validação isolada**
+
+   > "Monte um roteiro para validar isoladamente cada item da minha Fase 1, conforme a seção
+   > 'Como testar sozinho' do plano."
+
+   **Resposta:** a IA montou um roteiro com os comandos para testar cada item da Fase 1, que rodei
+   na minha máquina.
+
+   **Resultado:** ajustado. O `jobs.yaml` de exemplo do roteiro estava errado: sem o `^` antes do
+   `${BRANCH}`, o Jenkins aceitava qualquer branch. O erro só apareceu quando revisei o PR do
+   Gabriel Baldoni (#34), e descartei o arquivo.
+
+3. **Pacote incompleto no PR #29**
+
+   > "Analise o pedido de mudança do Gabriel Baldoni no PR #29: o pacote gerado com a branch
+   > integrada à `main` não inclui o `scripts/` nem o `.coveragerc`."
+
+   **Resposta:** o `MANIFEST.in` que eu tinha feito com a IA deixava arquivos de fora do
+   `.tar.gz`. A IA reproduziu o erro e mostrou que a correção sugerida ainda deixava um teste
+   falhando.
+
+   **Resultado:** ajustado. Usei a versão completa e, na segunda revisão, ainda acrescentei o
+   `reporting.py`. Passei a conferir o pacote rodando o `pytest` de dentro dele.
+
+4. **Integração do resumo ao script de e-mail**
+
+   > "Apresente as duas opções de integração do resumo ao script de e-mail, não só a recomendada.
+   > Não inicie a implementação antes de eu confirmar o alinhamento com o Ian, responsável pelo
+   > script."
+
+   **Resposta:** a IA tinha mostrado só a opção que recomendava, que mexia numa linha do script do
+   Ian. Ela comparou as duas opções e escreveu uma mensagem para eu alinhar com ele.
+
+   **Resultado:** ajustado. Escolhi a opção 1, mas só depois de combinar com o Ian.
+
+5. **Escopo do teste da configuração do Jenkins**
+
+   > "Implemente o teste da configuração do Jenkins com os três pontos do plano (plugins, segredos
+   > e job), sem a checagem extra do `^` no parâmetro `BRANCH`."
+
+   **Resposta:** além do que o plano pede, a IA tinha sugerido conferir também o `^` antes do
+   `${BRANCH}` no `jobs.yaml`, para o erro do roteiro não voltar.
+
+   **Resultado:** descartado. Mantive o teste só com o que o plano pede: plugins com versão fixada,
+   senhas só por variável em `jenkins/casc/` e o job do contrato.
+
+**O que fiz sem IA:**
+
+- todos os commits e pushes, a abertura dos PRs e a escolha dos revisores;
+- as decisões de cada item: o arquivo de configuração do nginx no `reports`, a opção 1 do resumo
+  no e-mail e deixar fora do teste do Jenkins a checagem do `^` que a IA sugeriu;
+- o alinhamento com o Ian: sobre a mudança no `main()` do script de e-mail, antes de mexer nele, e
+  sobre a correção do TC-018 (#24);
+- a postagem das revisões nos PRs do Gabriel Baldoni e do Ian;
+- o roteiro para a validação isolada e o Docker Desktop, rodados na minha máquina.
 
 ### Declaração individual — Gabriel Baldoni
 
