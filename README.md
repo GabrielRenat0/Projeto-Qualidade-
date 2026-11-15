@@ -65,7 +65,57 @@
 
 ## Jenkins
 
-> Seção em construção. Responsável: Gabriel Baldoni.
+O Jenkins roda em container e é configurado só por código: o usuário admin, o job e as etapas
+do pipeline estão versionados no repositório, e nada é criado pela interface.
+
+### Acesso
+
+```bash
+docker compose up -d jenkins
+```
+
+Depois de cerca de um minuto, abra `http://localhost:8080` e entre com o `JENKINS_ADMIN_ID` e o
+`JENKINS_ADMIN_PASSWORD` do `.env`. A porta é publicada só na própria máquina (`127.0.0.1`).
+
+### Configuração como código
+
+Quando o Jenkins sobe, o plugin Configuration as Code (JCasC) lê todos os arquivos da pasta
+`jenkins/casc/`:
+
+| Arquivo | O que faz |
+|---|---|
+| `jenkins/Dockerfile` | Jenkins LTS (JDK 21) com tag fixa, Python 3 com `venv` e os plugins instalados, sem o assistente de instalação |
+| `jenkins/plugins.txt` | Os plugins da imagem, todos com versão fixada |
+| `jenkins/casc/security.yaml` | Cria o usuário admin, libera o acesso só para quem está logado e define os executores e a URL do Jenkins |
+| `jenkins/casc/jobs.yaml` | Cria o job `projeto-qualidade` com Job DSL |
+
+Nenhum desses arquivos guarda senha ou endereço: os valores vêm do `.env`, pelo Compose, como
+`${JENKINS_ADMIN_PASSWORD}` e `${REPO_URL}`. O `tests/unit/test_jenkins_config.py` falha se um
+plugin ficar sem versão, se um segredo for escrito direto no arquivo ou se o job sair do contrato.
+
+### O job `projeto-qualidade`
+
+- lê o `Jenkinsfile` do repositório definido em `REPO_URL`;
+- tem o parâmetro `BRANCH`, com padrão `main`: em **Construir com parâmetros**, dá para rodar o
+  pipeline de qualquer branch;
+- verifica o GitHub a cada 5 minutos (`H/5 * * * *`) e roda sozinho quando há commit novo.
+
+### O pipeline
+
+O `Jenkinsfile` é declarativo, com limite de 30 minutos por build, horário em cada linha do log
+e os 20 builds mais recentes guardados.
+
+| Etapa | O que faz | O que gera |
+|---|---|---|
+| Declarative: Checkout SCM | Clona o repositório na branch escolhida | Workspace |
+| Setup | Apaga relatórios e pacotes de builds anteriores, cria o venv e instala o `requirements.txt` | `.venv/` |
+| Test | Roda `pytest --junitxml=reports/junit.xml`; o gate de 90% de cobertura vem do `pytest.ini`. Publica o JUnit e arquiva `reports/**` mesmo quando um teste falha | Test Result e `reports/` |
+| Build | Roda `python -m build` e arquiva o pacote com fingerprint | `dist/*.tar.gz` e `dist/*.whl` |
+| Declarative: Post Actions | Em sucesso ou falha, chama `python3 scripts/notify_email.py --status <resultado>` | E-mail com o resultado |
+
+Na página do job, o **Stage View** mostra cada etapa. Na página de cada build ficam o **Test
+Result** e os **Artifacts**: o pacote e os relatórios. Tudo isso fica no volume
+`jenkins_home` e continua lá depois de um `docker compose down` e `up`.
 
 ### Imagem no Docker Hub
 
