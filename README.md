@@ -307,8 +307,7 @@ PRs, e revisei cada PR antes de pedir a revisão do grupo.
 - operei o Docker Desktop e o Jenkins: subi o serviço, rodei o primeiro build do pipeline com
   parâmetros e simulei uma máquina limpa, baixando a imagem do Docker Hub;
 - preenchi o `.env` local (que não é versionado);
-- percebi que os comentários de revisão misturavam dois PRs e pedi um comentário para cada um;
-- avisei a IA do rodízio de revisão que o grupo combinou, diferente do que estava no plano.
+- percebi que os comentários de revisão misturavam dois PRs e pedi um comentário para cada um.
 
 ### Declaração individual — Ian Romancini
 
