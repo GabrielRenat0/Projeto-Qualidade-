@@ -100,7 +100,118 @@ publicada, para dar para voltar à versão anterior.
 
 ## Testes e cobertura
 
-> Seção em construção. Responsável: Gabriel Renato.
+A suíte tem dois grupos de testes:
+
+- **Os 20 casos de teste (TCs) da NP1**, que chamam a API pública do JSONPlaceholder. Geram 23
+  execuções, porque o TC-002 e o TC-011 são parametrizados, e usam os markers `valid` e `invalid`.
+- **Os testes unitários da NP2**, com o marker `unit`, que conferem o código e a configuração do
+  projeto sem acessar a internet.
+
+O mesmo comando, `pytest`, roda na máquina, no container `tests` e no stage Test do Jenkins. Nos
+dois últimos, ele ganha só o `--junitxml=reports/junit.xml`, para gerar o resultado em JUnit. O
+resto da configuração fica no `pytest.ini` (relatórios e markers) e no `.coveragerc` (cobertura).
+
+### Como rodar
+
+Com o ambiente virtual ativo e o `requirements.txt` instalado:
+
+| Para | Comando |
+|---|---|
+| Rodar a suíte completa, com cobertura e o gate de 90% | `pytest` |
+| Rodar só os testes unitários, sem internet | `pytest -m unit --no-cov` |
+| Rodar só os TCs com dados válidos ou só os com dados inválidos | `pytest -m valid --no-cov` ou `pytest -m invalid --no-cov` |
+| Rodar um caso específico, por exemplo o TC-003 | `pytest --no-cov -k tc003` |
+| Gerar também o resultado em JUnit, como o Jenkins | `pytest --junitxml=reports/junit.xml` |
+
+Os comandos parciais precisam do `--no-cov`. O gate de cobertura vale para qualquer execução, e um
+teste sozinho executa pouco do código: `pytest -k tc003` passa no teste, mas falha no gate.
+
+**Apontar a suíte para outra API.** A URL vem da variável `API_BASE_URL`. Sem ela, ou com ela
+vazia, a suíte usa `https://jsonplaceholder.typicode.com`.
+
+```powershell
+# PowerShell
+$env:API_BASE_URL = "https://outra-api.example.com"
+pytest
+Remove-Item Env:API_BASE_URL
+```
+
+```bash
+# Linux/macOS
+API_BASE_URL=https://outra-api.example.com pytest
+```
+
+No Compose, o container `tests` recebe a mesma variável do `.env`.
+
+### Gate de cobertura (90%)
+
+- **O que é medido:** só o código que escrevemos, isto é, `conftest.py`, `helpers.py`,
+  `reporting.py` e a pasta `scripts/` (o `source` do `.coveragerc`). A API é de terceiros e os
+  testes não são medidos.
+- **O gate:** com `fail_under = 90`, uma execução abaixo de 90% termina com erro. No Jenkins, o
+  stage Test fica FAILURE, o Build é pulado e o e-mail de falha sai do mesmo jeito.
+- **Arquivo novo sem teste:** como `scripts/` entra como pasta, um arquivo novo nela que nenhum
+  teste importa aparece com 0% e baixa o total.
+- **Hoje:** a cobertura passa de 99%, e só duas linhas ficam sem cobertura. Uma é a do hook do
+  `conftest.py` que monta o resumo do relatório HTML, porque o pytest-html o chama depois que a
+  cobertura termina. Por isso a lógica desse resumo fica no `reporting.py`, que tem testes
+  próprios. A outra é o `sys.exit(main())` do script de e-mail, que só roda quando o script é
+  chamado direto.
+
+### Relatórios
+
+| Arquivo | O que é |
+|---|---|
+| `reports/report.html` | Relatório consolidado do pytest-html, com cada teste no seu grupo: um integrante (TC-001 a TC-020) ou os testes unitários. Também vai anexado ao e-mail |
+| `reports/coverage/index.html` | Cobertura navegável, linha a linha |
+| `reports/coverage.xml` | Cobertura em XML, lida pelo script de e-mail |
+| `reports/junit.xml` | Resultado em JUnit, gerado quando o comando tem `--junitxml` (Jenkins e container `tests`) |
+
+Onde ver:
+
+- **Na máquina:** abra os arquivos de `reports/` no navegador.
+- **No Jenkins:** em cada build, o JUnit aparece em *Test Result*, e a pasta `reports/` inteira fica
+  em *Artifacts*, mesmo quando um teste falha.
+- **Pelo Compose:** o container `tests` grava os relatórios no volume `reports`, e o serviço
+  `reports` mostra esse volume em http://localhost:8081. Os resumos do `k6` (perfil `perf`)
+  também aparecem ali.
+- **No e-mail:** o corpo traz um resumo como este:
+
+  ```
+  Tests: 154 (passed: 154, failed: 0, errors: 0, skipped: 0)
+  Coverage: 99.20%
+  ```
+
+  Quando um relatório não existe, por exemplo porque o build quebrou antes dos testes, a linha
+  avisa que ele não foi gerado. O `report.html` vai anexado quando existe e tem até 10 MB.
+
+### Testes unitários e de configuração
+
+| Arquivo | O que confere |
+|---|---|
+| `tests/unit/test_helpers.py` | Os caminhos de erro do `helpers.py`: massa de dados ausente ou inválida e respostas que não são JSON |
+| `tests/unit/test_reporting.py` | O grupo de cada teste, o título e o resumo do relatório consolidado |
+| `tests/unit/test_notify_email.py` | O script de e-mail: configuração, origem, assunto, corpo, envio e códigos de saída, com um servidor SMTP falso |
+| `tests/unit/test_email_report_summary.py` | O resumo dos testes e da cobertura no corpo do e-mail, com relatórios presentes, ausentes ou corrompidos |
+| `tests/unit/test_email_attachment.py` | O anexo do `report.html` no e-mail: relatório presente, ausente, ilegível ou acima do limite de 10 MB |
+| `tests/unit/test_no_hardcoded_email.py` | Que nenhum e-mail real está fixo no pipeline: os destinatários vêm de `NOTIFY_EMAIL_TO` |
+| `tests/unit/test_jenkins_config.py` | A configuração do Jenkins: plugins com versão fixada, senhas só por variável em `jenkins/casc/` e o job `projeto-qualidade` com o parâmetro `BRANCH` |
+
+Os testes de configuração leem os arquivos do pipeline (`Jenkinsfile`, `docker-compose.yml` e
+`jenkins/`). Se alguém quebrar o que o grupo combinou, por exemplo com um plugin sem versão ou uma
+senha escrita no arquivo, o stage Test falha.
+
+### Rodar a partir do pacote
+
+O `.tar.gz` gerado pelo stage Build leva a suíte inteira: os testes, a massa de dados, a
+configuração e os arquivos que os testes de configuração leem. Para conferir:
+
+```bash
+python -m build --sdist
+tar -xzf dist/projeto_qualidade-2.0.0.tar.gz
+cd projeto_qualidade-2.0.0
+pytest
+```
 
 ### Mapa de casos de teste (ID → Arquivo → Teste)
 
@@ -155,7 +266,100 @@ Os TCs parametrizados (TC-002 e TC-011) geram 23 execuções no total.
 
 ### Declaração individual — Gabriel Renato
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5 e Claude Fable 5.2, pelo Claude Code (extensão do VS Code), com
+acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA como par de programação. A maior parte do código
+da minha parte foi escrita por ela, em etapas pequenas, na ordem do plano. Antes de cada etapa,
+ela mostrava quais arquivos ia mexer, quais não ia tocar e como ia verificar, e só seguia com o
+meu "ok". Depois, rodava as verificações (testes, Docker, um Jenkins descartável) e explicava cada
+parte do código e as perguntas que o professor poderia fazer. Eu revisava, tirava as dúvidas e
+pedia ajustes. Todos os commits, pushes e PRs foram feitos por mim, e nada foi para o GitHub sem a
+minha aprovação.
+
+**Para que usei:**
+
+- o `Jenkinsfile` (o esqueleto e os stages Setup, Test e Build, com o arquivamento), o
+  `pyproject.toml` e o `MANIFEST.in`, o `pytest.ini` e o `.coveragerc`, o `API_BASE_URL` no
+  `conftest.py` e o serviço `reports`, com o `nginx/reports.conf`;
+- na Fase 2, o resumo dos testes e da cobertura no e-mail e o
+  `tests/unit/test_jenkins_config.py`;
+- verificações: Jenkins e Mailpit descartáveis no Docker, provas de falha, o `pytest` rodado de
+  dentro do pacote e a simulação de merge dos PRs abertos;
+- revisão dos PRs do Gabriel Baldoni e do #40 do Ian;
+- textos de commits, de PRs e de mensagens para o grupo;
+- escrita da seção "Testes e cobertura" e desta declaração.
+
+**Prompts** (resumidos e reescritos):
+
+1. **Listagem de arquivos no serviço `reports`**
+
+   > "Com base no plano da NP2, compare as duas formas de ligar a listagem de arquivos do nginx no
+   > serviço `reports` e recomende uma."
+
+   **Resposta:** a IA recomendou um arquivo de configuração próprio, o `nginx/reports.conf`,
+   montado só para leitura, em vez de um comando dentro do Compose. Os motivos: é mais fácil de
+   ler e de explicar, segue o padrão de configuração versionada do plano e mantém a imagem oficial
+   do nginx sem mudar o comando de inicialização dela.
+
+   **Resultado:** aceito. Antes do commit, a IA subiu o serviço e provou a listagem no 8081, o
+   volume só para leitura e o container `tests` gravando os relatórios nele.
+
+2. **Roteiro de validação isolada**
+
+   > "Monte um roteiro para validar isoladamente cada item da minha Fase 1, conforme a seção
+   > 'Como testar sozinho' do plano."
+
+   **Resposta:** a IA montou um roteiro com os comandos para testar cada item da Fase 1, que rodei
+   na minha máquina.
+
+   **Resultado:** ajustado. O `jobs.yaml` de exemplo do roteiro estava errado: sem o `^` antes do
+   `${BRANCH}`, o Jenkins aceitava qualquer branch. O erro só apareceu quando revisei o PR do
+   Gabriel Baldoni (#34), e descartei o arquivo.
+
+3. **Pacote incompleto no PR #29**
+
+   > "Analise o pedido de mudança do Gabriel Baldoni no PR #29: o pacote gerado com a branch
+   > integrada à `main` não inclui o `scripts/` nem o `.coveragerc`."
+
+   **Resposta:** o `MANIFEST.in` que eu tinha feito com a IA deixava arquivos de fora do
+   `.tar.gz`. A IA reproduziu o erro e mostrou que a correção sugerida ainda deixava um teste
+   falhando.
+
+   **Resultado:** ajustado. Usei a versão completa e, na segunda revisão, ainda acrescentei o
+   `reporting.py`. Passei a conferir o pacote rodando o `pytest` de dentro dele.
+
+4. **Integração do resumo ao script de e-mail**
+
+   > "Apresente as duas opções de integração do resumo ao script de e-mail, não só a recomendada.
+   > Não inicie a implementação antes de eu confirmar o alinhamento com o Ian, responsável pelo
+   > script."
+
+   **Resposta:** a IA tinha mostrado só a opção que recomendava, que mexia numa linha do script do
+   Ian. Ela comparou as duas opções e escreveu uma mensagem para eu alinhar com ele.
+
+   **Resultado:** ajustado. Escolhi a opção 1, mas só depois de combinar com o Ian.
+
+5. **Escopo do teste da configuração do Jenkins**
+
+   > "Implemente o teste da configuração do Jenkins com os três pontos do plano (plugins, segredos
+   > e job), sem a checagem extra do `^` no parâmetro `BRANCH`."
+
+   **Resposta:** além do que o plano pede, a IA tinha sugerido conferir também o `^` antes do
+   `${BRANCH}` no `jobs.yaml`, para o erro do roteiro não voltar.
+
+   **Resultado:** descartado. Mantive o teste só com o que o plano pede: plugins com versão fixada,
+   senhas só por variável em `jenkins/casc/` e o job do contrato.
+
+**O que fiz sem IA:**
+
+- todos os commits e pushes, a abertura dos PRs e a escolha dos revisores;
+- as decisões de cada item: o arquivo de configuração do nginx no `reports`, a opção 1 do resumo
+  no e-mail e deixar fora do teste do Jenkins a checagem do `^` que a IA sugeriu;
+- o alinhamento com o Ian: sobre a mudança no `main()` do script de e-mail, antes de mexer nele, e
+  sobre a correção do TC-018 (#24);
+- a postagem das revisões nos PRs do Gabriel Baldoni e do Ian;
+- o roteiro para a validação isolada e o Docker Desktop, rodados na minha máquina.
 
 ### Declaração individual — Gabriel Baldoni
 
