@@ -151,10 +151,12 @@ No Compose, o container `tests` recebe a mesma variável do `.env`.
 - **O gate:** com `fail_under = 90`, uma execução abaixo de 90% termina com erro. No Jenkins, o
   stage Test fica FAILURE, o Build é pulado e o e-mail de falha sai do mesmo jeito.
 - **Arquivo novo sem teste:** como `scripts/` entra como pasta, um arquivo novo nela que nenhum
-  teste importa aparece com 0% e derruba o total.
-- **Hoje:** a cobertura passa de 99%. O `conftest.py` tem uma linha sem cobertura, a do hook que
-  monta o resumo do relatório HTML, porque o pytest-html o chama depois que a cobertura termina. Por
-  isso a lógica desse resumo fica no `reporting.py`, que tem testes próprios.
+  teste importa aparece com 0% e baixa o total.
+- **Hoje:** a cobertura passa de 99%, e só duas linhas ficam sem cobertura. Uma é a do hook do
+  `conftest.py` que monta o resumo do relatório HTML, porque o pytest-html o chama depois que a
+  cobertura termina. Por isso a lógica desse resumo fica no `reporting.py`, que tem testes
+  próprios. A outra é o `sys.exit(main())` do script de e-mail, que só roda quando o script é
+  chamado direto.
 
 ### Relatórios
 
@@ -171,7 +173,7 @@ Onde ver:
 - **No Jenkins:** em cada build, o JUnit aparece em *Test Result*, e a pasta `reports/` inteira fica
   em *Artifacts*, mesmo quando um teste falha.
 - **Pelo Compose:** o container `tests` grava os relatórios no volume `reports`, e o serviço
-  `reports` mostra esse volume em http://localhost:8081. Os relatórios do `k6` (perfil `perf`)
+  `reports` mostra esse volume em http://localhost:8081. Os resumos do `k6` (perfil `perf`)
   também aparecem ali.
 - **No e-mail:** o corpo traz um resumo como este:
 
