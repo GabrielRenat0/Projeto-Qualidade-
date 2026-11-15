@@ -65,7 +65,60 @@
 
 ## Jenkins
 
-> Seção em construção. Responsável: Gabriel Baldoni.
+O Jenkins roda em container e é configurado só por código: o usuário admin, o job e as etapas
+do pipeline estão versionados no repositório, e nada é criado pela interface.
+
+### Acesso
+
+```bash
+docker compose up -d jenkins
+```
+
+Depois de cerca de um minuto, abra `http://localhost:8080` e entre com o `JENKINS_ADMIN_ID` e o
+`JENKINS_ADMIN_PASSWORD` do `.env`. A porta é publicada só na própria máquina (`127.0.0.1`).
+
+### Configuração como código
+
+A configuração fica em dois lugares: a imagem, construída pelo `jenkins/Dockerfile` com os
+plugins do `plugins.txt`, e a pasta `jenkins/casc/`, que o plugin Configuration as Code (JCasC)
+lê inteira quando o Jenkins sobe:
+
+| Arquivo | O que faz |
+|---|---|
+| `jenkins/Dockerfile` | Jenkins LTS (JDK 21) com tag fixa, Python 3 com `venv` e os plugins instalados, sem o assistente de instalação |
+| `jenkins/plugins.txt` | Os plugins da imagem, todos com versão fixada |
+| `jenkins/casc/security.yaml` | Cria o usuário admin, libera o acesso só para quem está logado e define os executores e a URL do Jenkins |
+| `jenkins/casc/jobs.yaml` | Cria o job `projeto-qualidade` com Job DSL |
+
+Nenhum desses arquivos guarda senha, e-mail ou o endereço do repositório: esses valores vêm do
+`.env`, pelo Compose, como `${JENKINS_ADMIN_PASSWORD}` e `${REPO_URL}`. O `tests/unit/test_jenkins_config.py` falha se um
+plugin ficar sem versão, se um segredo for escrito direto no arquivo ou se o job sair do contrato.
+
+### O job `projeto-qualidade`
+
+- lê o `Jenkinsfile` do repositório definido em `REPO_URL`;
+- tem o parâmetro `BRANCH`, com padrão `main`: em **Construir com parâmetros**, dá para rodar o
+  pipeline de qualquer branch;
+- verifica o GitHub a cada 5 minutos (`H/5 * * * *`) e roda sozinho quando há commit novo. O
+  polling usa a `BRANCH` do último build: depois de um build manual de outra branch, ele passa
+  a olhar essa branch até um novo build com `BRANCH=main`.
+
+### O pipeline
+
+O `Jenkinsfile` é declarativo, com limite de 30 minutos por build, horário em cada linha do log
+e os 20 builds mais recentes guardados.
+
+| Etapa | O que faz | O que gera |
+|---|---|---|
+| Declarative: Checkout SCM | Clona o repositório na branch escolhida | Workspace |
+| Setup | Apaga relatórios e pacotes de builds anteriores, cria o venv e instala o `requirements.txt` | `.venv/` |
+| Test | Roda `pytest --junitxml=reports/junit.xml`; o gate de 90% de cobertura vem do `pytest.ini`. Publica o JUnit e arquiva `reports/**` mesmo quando um teste falha | Test Result e `reports/` |
+| Build | Roda `python -m build` e arquiva o pacote com fingerprint | `dist/*.tar.gz` e `dist/*.whl` |
+| Declarative: Post Actions | Em sucesso ou falha, chama `python3 scripts/notify_email.py --status <resultado>` | E-mail com o resultado |
+
+Na página do job, o **Stage View** mostra cada etapa. Na página de cada build ficam o **Test
+Result** e os **Artifacts**: o pacote e os relatórios. Tudo isso fica no volume
+`jenkins_home` e continua lá depois de um `docker compose down` e `up`.
 
 ### Imagem no Docker Hub
 
@@ -363,7 +416,105 @@ minha aprovação.
 
 ### Declaração individual — Gabriel Baldoni
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5, pelo Claude Code (extensão do VS Code), com acesso ao
+repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA como par de programação. A maior parte do código
+da minha parte foi escrita por ela, em etapas pequenas que eu pedia na ordem do plano, uma
+branch por item. Em cada etapa, a ferramenta explicava o que tinha feito e como tinha testado;
+eu revisava o código, tirava as dúvidas, testava na minha máquina e pedia ajustes quando algo
+não estava como eu queria. Eu mesmo criava as branches, fazia os commits e o push e abria os
+PRs, e revisei cada PR antes de pedir a revisão do grupo.
+
+**Para que usei:**
+
+- planejamento da minha parte: o que era meu, a ordem de implementação e as dependências com
+  os outros integrantes;
+- código e testes: a estrutura do README da NP2, o serviço `jenkins` no Compose, o
+  `jenkins/casc/jobs.yaml`, o `tests/unit/test_helpers.py`, o `reporting.py` e os testes dele,
+  a origem do e-mail no `scripts/notify_email.py` e o envio pelo container `tests`;
+- verificações: rodar a suíte e o Compose, subir um Jenkins temporário para testar o job e
+  conferir a imagem publicada no Docker Hub;
+- revisão dos PRs do Gabriel Renato (#22, #29, #30, #31, #39 e #42), testando cada um numa
+  cópia separada do repositório;
+- textos dos commits, dos PRs e desta seção.
+
+**Prompts** (resumidos):
+
+1. **Planejamento da minha parte**
+
+   > "me explica o que é da minha parte no plano, em que ordem fazer e do que eu dependo dos
+   > outros integrantes, para eu poder executar"
+
+   **Resposta:** uma tabela com os meus itens, uma ordem sugerida e as dependências. O
+   esqueleto do README e o job do Jenkins vieram primeiro, porque o Ian e o Gabriel Renato
+   precisavam deles para testar as partes deles.
+
+   **Resultado:** aceito. Segui essa ordem.
+
+2. **Job do Jenkins criado por código**
+
+   > "agora o job do Jenkins pelo `jobs.yaml`, seguindo o contrato: nome `projeto-qualidade`,
+   > parâmetro `BRANCH` e repositório vindo do `REPO_URL`"
+
+   **Resposta:** um script de Job DSL lido pelo JCasC. A IA explicou por que a branch fica como
+   `*/^${BRANCH}`: sem o `^`, o JCasC trocaria a variável quando o Jenkins sobe, e o parâmetro
+   escolhido em cada build seria ignorado. Ela testou num Jenkins temporário, e o build com
+   `BRANCH=main` terminou em SUCCESS.
+
+   **Resultado:** aceito. Depois, rodei o pipeline completo no Jenkins do Compose.
+
+3. **Relatório consolidado no `reporting.py`**
+
+   > "tira a lógica do relatório do `conftest.py` para o `reporting.py`, com testes, sem mudar
+   > o relatório que todo mundo usa"
+
+   **Resposta:** o `conftest.py` ficou só com os hooks do pytest, e a contagem por integrante
+   virou uma classe testável. Os testes unitários ganharam um grupo próprio no relatório, e a
+   cobertura do `conftest.py` subiu de 86% para 98%. A IA manteve o `import os` que o Gabriel
+   Renato tinha acabado de adicionar, como ele pediu.
+
+   **Resultado:** aceito. Abri o `reports/report.html` e conferi o título, a coluna e o resumo.
+
+4. **Origem do e-mail e envio pelo container `tests`**
+
+   > "o assunto do e-mail precisa dizer se veio do Jenkins ou do container `tests`, e o
+   > `tests` precisa mandar o e-mail sem perder o código de saída da suíte"
+
+   **Resposta:** antes de escrever o código, a IA explicou o plano: o Jenkins define
+   `JENKINS_URL` em todo build, e o Docker cria `/.dockerenv` em todo container. No Compose, o
+   `tests` roda a suíte, guarda o código de saída, chama o script e termina com esse código.
+   Ela provou a falha apontando a API para um endereço inválido: o container terminou com
+   código 1, e o e-mail de FAILURE chegou ao Mailpit.
+
+   **Resultado:** aceito. Como o PR mexia no script do Ian e no bloco do Fabio, pedi a revisão
+   dos dois.
+
+5. **Revisão do PR #29 do Gabriel Renato**
+
+   > "o Gabriel Renato disse que corrigiu o PR #29 em que eu pedi alteração; verifica comigo
+   > se a correção resolveu antes de eu aprovar"
+
+   **Resposta:** na primeira revisão, li o Jenkinsfile com a IA e pedi que ela gerasse o pacote
+   da suíte, para conferir o que ia dentro dele. Faltavam o `scripts/notify_email.py` e o
+   `.coveragerc`, e o `pytest` rodado a partir do pacote falharia. Depois da correção do
+   Gabriel Renato, a mesma verificação achou um problema novo: o meu `reporting.py`, que tinha
+   acabado de entrar na `main`, faltava no `pyproject.toml`.
+
+   **Resultado:** aceito. Marquei o PR como "Request changes" duas vezes, escrevi no comentário
+   o erro e a correção sugerida e só aprovei quando a suíte passou rodando a partir do pacote.
+
+**O que fiz sem IA:**
+
+- criei as branches, fiz os commits e o push e abri os PRs;
+- ajustei à mão o texto de alguns PRs, escolhi os revisores e tomei as decisões de aprovar e
+  mergear;
+- configurei o Docker Hub: confirmei a conta, fiz o login e o push das tags `1.0.0` e `latest`
+  e preenchi a descrição e o overview no site;
+- operei o Docker Desktop e o Jenkins: subi o serviço, rodei o primeiro build do pipeline com
+  parâmetros e simulei uma máquina limpa, baixando a imagem do Docker Hub;
+- preenchi o `.env` local (que não é versionado);
+- percebi que os comentários de revisão misturavam dois PRs e pedi um comentário para cada um.
 
 ### Declaração individual — Ian Romancini
 
