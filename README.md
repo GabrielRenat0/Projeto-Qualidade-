@@ -79,8 +79,9 @@ Depois de cerca de um minuto, abra `http://localhost:8080` e entre com o `JENKIN
 
 ### Configuração como código
 
-Quando o Jenkins sobe, o plugin Configuration as Code (JCasC) lê todos os arquivos da pasta
-`jenkins/casc/`:
+A configuração fica em dois lugares: a imagem, construída pelo `jenkins/Dockerfile` com os
+plugins do `plugins.txt`, e a pasta `jenkins/casc/`, que o plugin Configuration as Code (JCasC)
+lê inteira quando o Jenkins sobe:
 
 | Arquivo | O que faz |
 |---|---|
@@ -89,8 +90,8 @@ Quando o Jenkins sobe, o plugin Configuration as Code (JCasC) lê todos os arqui
 | `jenkins/casc/security.yaml` | Cria o usuário admin, libera o acesso só para quem está logado e define os executores e a URL do Jenkins |
 | `jenkins/casc/jobs.yaml` | Cria o job `projeto-qualidade` com Job DSL |
 
-Nenhum desses arquivos guarda senha ou endereço: os valores vêm do `.env`, pelo Compose, como
-`${JENKINS_ADMIN_PASSWORD}` e `${REPO_URL}`. O `tests/unit/test_jenkins_config.py` falha se um
+Nenhum desses arquivos guarda senha, e-mail ou o endereço do repositório: esses valores vêm do
+`.env`, pelo Compose, como `${JENKINS_ADMIN_PASSWORD}` e `${REPO_URL}`. O `tests/unit/test_jenkins_config.py` falha se um
 plugin ficar sem versão, se um segredo for escrito direto no arquivo ou se o job sair do contrato.
 
 ### O job `projeto-qualidade`
@@ -98,7 +99,9 @@ plugin ficar sem versão, se um segredo for escrito direto no arquivo ou se o jo
 - lê o `Jenkinsfile` do repositório definido em `REPO_URL`;
 - tem o parâmetro `BRANCH`, com padrão `main`: em **Construir com parâmetros**, dá para rodar o
   pipeline de qualquer branch;
-- verifica o GitHub a cada 5 minutos (`H/5 * * * *`) e roda sozinho quando há commit novo.
+- verifica o GitHub a cada 5 minutos (`H/5 * * * *`) e roda sozinho quando há commit novo. O
+  polling usa a `BRANCH` do último build: depois de um build manual de outra branch, ele passa
+  a olhar essa branch até um novo build com `BRANCH=main`.
 
 ### O pipeline
 
