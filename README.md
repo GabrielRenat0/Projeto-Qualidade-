@@ -100,7 +100,116 @@ publicada, para dar para voltar à versão anterior.
 
 ## Testes e cobertura
 
-> Seção em construção. Responsável: Gabriel Renato.
+A suíte tem dois grupos de testes:
+
+- **Os 20 casos de teste (TCs) da NP1**, que chamam a API pública do JSONPlaceholder. Geram 23
+  execuções, porque o TC-002 e o TC-011 são parametrizados, e usam os markers `valid` e `invalid`.
+- **Os testes unitários da NP2**, com o marker `unit`, que conferem o código e a configuração do
+  projeto sem acessar a internet.
+
+O mesmo comando, `pytest`, roda na máquina, no container `tests` e no stage Test do Jenkins. Nos
+dois últimos, ele ganha só o `--junitxml=reports/junit.xml`, para gerar o resultado em JUnit. O
+resto da configuração fica no `pytest.ini` (relatórios e markers) e no `.coveragerc` (cobertura).
+
+### Como rodar
+
+Com o ambiente virtual ativo e o `requirements.txt` instalado:
+
+| Para | Comando |
+|---|---|
+| Rodar a suíte completa, com cobertura e o gate de 90% | `pytest` |
+| Rodar só os testes unitários, sem internet | `pytest -m unit --no-cov` |
+| Rodar só os TCs com dados válidos ou só os com dados inválidos | `pytest -m valid --no-cov` ou `pytest -m invalid --no-cov` |
+| Rodar um caso específico, por exemplo o TC-003 | `pytest --no-cov -k tc003` |
+| Gerar também o resultado em JUnit, como o Jenkins | `pytest --junitxml=reports/junit.xml` |
+
+Os comandos parciais precisam do `--no-cov`. O gate de cobertura vale para qualquer execução, e um
+teste sozinho executa pouco do código: `pytest -k tc003` passa no teste, mas falha no gate.
+
+**Apontar a suíte para outra API.** A URL vem da variável `API_BASE_URL`. Sem ela, ou com ela
+vazia, a suíte usa `https://jsonplaceholder.typicode.com`.
+
+```powershell
+# PowerShell
+$env:API_BASE_URL = "https://outra-api.example.com"
+pytest
+Remove-Item Env:API_BASE_URL
+```
+
+```bash
+# Linux/macOS
+API_BASE_URL=https://outra-api.example.com pytest
+```
+
+No Compose, o container `tests` recebe a mesma variável do `.env`.
+
+### Gate de cobertura (90%)
+
+- **O que é medido:** só o código que escrevemos, isto é, `conftest.py`, `helpers.py`,
+  `reporting.py` e a pasta `scripts/` (o `source` do `.coveragerc`). A API é de terceiros e os
+  testes não são medidos.
+- **O gate:** com `fail_under = 90`, uma execução abaixo de 90% termina com erro. No Jenkins, o
+  stage Test fica FAILURE, o Build é pulado e o e-mail de falha sai do mesmo jeito.
+- **Arquivo novo sem teste:** como `scripts/` entra como pasta, um arquivo novo nela que nenhum
+  teste importa aparece com 0% e derruba o total.
+- **Hoje:** a cobertura passa de 99%. O `conftest.py` tem uma linha sem cobertura, a do hook que
+  monta o resumo do relatório HTML, porque o pytest-html o chama depois que a cobertura termina. Por
+  isso a lógica desse resumo fica no `reporting.py`, que tem testes próprios.
+
+### Relatórios
+
+| Arquivo | O que é |
+|---|---|
+| `reports/report.html` | Relatório consolidado do pytest-html, com cada teste no seu grupo: um integrante (TC-001 a TC-020) ou os testes unitários. Também vai anexado ao e-mail |
+| `reports/coverage/index.html` | Cobertura navegável, linha a linha |
+| `reports/coverage.xml` | Cobertura em XML, lida pelo script de e-mail |
+| `reports/junit.xml` | Resultado em JUnit, gerado quando o comando tem `--junitxml` (Jenkins e container `tests`) |
+
+Onde ver:
+
+- **Na máquina:** abra os arquivos de `reports/` no navegador.
+- **No Jenkins:** em cada build, o JUnit aparece em *Test Result*, e a pasta `reports/` inteira fica
+  em *Artifacts*, mesmo quando um teste falha.
+- **Pelo Compose:** o container `tests` grava os relatórios no volume `reports`, e o serviço
+  `reports` mostra esse volume em http://localhost:8081. Os relatórios do `k6` (perfil `perf`)
+  também aparecem ali.
+- **No e-mail:** o corpo traz um resumo como este:
+
+  ```
+  Tests: 154 (passed: 154, failed: 0, errors: 0, skipped: 0)
+  Coverage: 99.20%
+  ```
+
+  Quando um relatório não existe, por exemplo porque o build quebrou antes dos testes, a linha
+  avisa que ele não foi gerado. O `report.html` vai anexado quando existe e tem até 10 MB.
+
+### Testes unitários e de configuração
+
+| Arquivo | O que confere |
+|---|---|
+| `tests/unit/test_helpers.py` | Os caminhos de erro do `helpers.py`: massa de dados ausente ou inválida e respostas que não são JSON |
+| `tests/unit/test_reporting.py` | O grupo de cada teste, o título e o resumo do relatório consolidado |
+| `tests/unit/test_notify_email.py` | O script de e-mail: configuração, origem, assunto, corpo, envio e códigos de saída, com um servidor SMTP falso |
+| `tests/unit/test_email_report_summary.py` | O resumo dos testes e da cobertura no corpo do e-mail, com relatórios presentes, ausentes ou corrompidos |
+| `tests/unit/test_email_attachment.py` | O anexo do `report.html` no e-mail: relatório presente, ausente, ilegível ou acima do limite de 10 MB |
+| `tests/unit/test_no_hardcoded_email.py` | Que nenhum e-mail real está fixo no pipeline: os destinatários vêm de `NOTIFY_EMAIL_TO` |
+| `tests/unit/test_jenkins_config.py` | A configuração do Jenkins: plugins com versão fixada, senhas só por variável em `jenkins/casc/` e o job `projeto-qualidade` com o parâmetro `BRANCH` |
+
+Os testes de configuração leem os arquivos do pipeline (`Jenkinsfile`, `docker-compose.yml` e
+`jenkins/`). Se alguém quebrar o que o grupo combinou, por exemplo com um plugin sem versão ou uma
+senha escrita no arquivo, o stage Test falha.
+
+### Rodar a partir do pacote
+
+O `.tar.gz` gerado pelo stage Build leva a suíte inteira: os testes, a massa de dados, a
+configuração e os arquivos que os testes de configuração leem. Para conferir:
+
+```bash
+python -m build --sdist
+tar -xzf dist/projeto_qualidade-2.0.0.tar.gz
+cd projeto_qualidade-2.0.0
+pytest
+```
 
 ### Mapa de casos de teste (ID → Arquivo → Teste)
 
