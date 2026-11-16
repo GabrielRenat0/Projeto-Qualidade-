@@ -644,19 +644,25 @@ commitou código gerado por IA que não saiba explicar.
 **Ferramenta:** Claude Opus 5.5 e Claude Fable 5.2, os dois com effort High, pelo Claude Code
 (extensão do VS Code), com acesso ao repositório local.
 
-**Como trabalhei com a ferramenta:** usei a IA com specs por fase (SDD). Antes de cada fase,
-escrevi com ela uma spec com o objetivo, os requisitos, as tarefas e a verificação; as specs
-ficaram fora do repositório. A ferramenta implementava a fase inteira, rodava as verificações e
-parava. Eu revisava cada diff, tirava as dúvidas e pedia ajustes. Ela nunca criou branch, commit
-ou push nem mexeu no stage do git: isso tudo foi feito por mim. A exceção foi o `Dockerfile` da
-suíte de testes, que escrevi à mão.
+**Como trabalhei com a ferramenta:** usei a IA com specs por fase (SDD), nas Fases 0, 1 e 2 da
+minha parte. Antes de cada fase, escrevi com ela uma spec com o objetivo, os requisitos, as
+tarefas e a verificação; as specs ficaram fora do repositório. Depois eu mandava a spec da fase
+para a ferramenta, que implementava a fase inteira, rodava as verificações e parava. Eu revisava
+cada diff, tirava as dúvidas e pedia ajustes. Ela nunca criou branch, commit ou push nem mexeu
+no stage do git: isso tudo foi feito por mim. A única parte que pedi para deixar de fora foi o
+`Dockerfile` da suíte de testes, na Fase 1, que escrevi à mão.
 
 **Para que usei:**
 
 - Planejamento: o plano de trabalho do grupo, a partir do enunciado e do repositório da NP1, e
   as specs da minha parte;
-- Código e testes: o esqueleto do `docker-compose.yml` e o `.env.example`, a imagem do Jenkins
-  (`jenkins/Dockerfile` e `plugins.txt`), o serviço `k6`, o anexo do `report.html` no
+- Fase 0, código: a preparação do repositório para a NP2 (`.gitignore`, `.gitattributes` e a
+  remoção do workflow do GitHub Actions), o esqueleto do `docker-compose.yml` e o
+  `.env.example`;
+- Fase 1, código: a imagem do Jenkins (`jenkins/Dockerfile` e `plugins.txt`), o
+  `.dockerignore` e o bloco do serviço `tests` no Compose. O `Dockerfile` da suíte ficou de
+  fora: esse eu escrevi à mão;
+- Fase 2, código e testes: o serviço `k6`, o anexo do `report.html` no
   `scripts/notify_email.py` e os testes `test_email_attachment.py`, `test_compose_config.py` e
   `test_compose_security.py`;
 - verificações: k6 pelo Compose, um Mailpit descartável para o anexo, provas de falha dos
@@ -688,7 +694,7 @@ suíte de testes, que escrevi à mão.
    **Resultado:** aceito. Revisei os diffs, fiz os commits e abri os PRs #41 e #46.
 
 
-5. **Documentação antes da hora**
+3. **Documentação antes da hora**
 
    > "não precisa fazer a fase 3! Somente verificar sobre se tá tudo certo da fase 2"
 
@@ -699,7 +705,8 @@ suíte de testes, que escrevi à mão.
 
 **O que fiz sem IA:**
 
-- escrevi à mão o `Dockerfile` da suíte de testes, a imagem do serviço `tests`;
+- escrevi à mão o `Dockerfile` da suíte de testes, a imagem do serviço `tests`. Foi a única
+  parte da Fase 1 que não mandei para a IA;
 - criei as branches, fiz todos os commits e pushes e abri os PRs;
 - decidi a divisão do trabalho do grupo e fiquei com a parte de Docker;
 - decidi corrigir os dois pontos da revisão do Ian no PR #41, em vez de só responder;
