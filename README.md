@@ -1,7 +1,7 @@
 # Projeto Qualidade — Esteira DevOps da suíte de testes de API
 
-**Disciplina:** S07 - Gerência de Configuração e Evolução de Software
-**Instituição:** INATEL
+**Disciplina:** S07 - Gerência de Configuração e Evolução de Software\
+**Instituição:** INATEL\
 **Integrantes:**
 - Fabio Henrique
 - Gabriel Renato
@@ -529,7 +529,7 @@ commitou código gerado por IA que não saiba explicar.
 |---|---|---|---|
 | Fabio Henrique | Claude (Claude Code) — *modelo a confirmar* | Montagem do plano da NP2 (`PLANO_NP2.md`) a partir do enunciado e do repositório da NP1; *demais usos a confirmar* | *a confirmar* |
 | Gabriel Renato | *a confirmar* | *a confirmar* | *a confirmar* |
-| Gabriel Baldoni | *a confirmar* | *a confirmar* | *a confirmar* |
+| Gabriel Baldoni | Claude Opus 5.5 (Claude Code) | Planejamento da minha parte; código e testes do serviço `jenkins`, do `jobs.yaml`, do `test_helpers.py`, do `reporting.py` e da origem do e-mail; verificações; revisão dos PRs do Gabriel Renato; documentação | Individual, em par com a ferramenta: ela escrevia e testava, eu revisava, testava na minha máquina, pedia ajustes e fazia os commits |
 | Ian Romancini | Claude Opus 5.5 (Claude Code) | Código e testes do e-mail (script, `mailpit`, `post` do Jenkinsfile, teste de e-mail fixo), `security.yaml`, diagnóstico do TC-018 e do build, revisão de PRs, documentação | Individual, em par com a ferramenta: ela escrevia, eu revisava, testava, pedia ajustes e aprovava cada commit |
 
 ### Declaração individual — Fabio Henrique
