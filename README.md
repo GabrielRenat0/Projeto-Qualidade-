@@ -634,14 +634,77 @@ commitou código gerado por IA que não saiba explicar.
 
 | Integrante | Ferramenta e modelo | Para que usou | Dinâmica |
 |---|---|---|---|
-| Fabio Henrique | Claude (Claude Code) — *modelo a confirmar* | Montagem do plano da NP2 (`PLANO_NP2.md`) a partir do enunciado e do repositório da NP1; *demais usos a confirmar* | *a confirmar* |
+| Fabio Henrique | Claude Opus 5.5 e Claude Fable 5.2 (Claude Code) | Plano de trabalho do grupo e specs por fase; esqueleto do Compose, imagem do Jenkins, serviço `k6`, anexo do relatório no e-mail e testes da configuração do Compose; verificações e documentação | Specs por fase: a ferramenta implementava a fase e parava; eu revisava cada diff e fazia os commits. O `Dockerfile` da suíte eu escrevi à mão |
 | Gabriel Renato | *a confirmar* | *a confirmar* | *a confirmar* |
 | Gabriel Baldoni | *a confirmar* | *a confirmar* | *a confirmar* |
 | Ian Romancini | Claude Opus 5.5 (Claude Code) | Código e testes do e-mail (script, `mailpit`, `post` do Jenkinsfile, teste de e-mail fixo), `security.yaml`, diagnóstico do TC-018 e do build, revisão de PRs, documentação | Individual, em par com a ferramenta: ela escrevia, eu revisava, testava, pedia ajustes e aprovava cada commit |
 
 ### Declaração individual — Fabio Henrique
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5 e Claude Fable 5.2, os dois com effort High, pelo Claude Code
+(extensão do VS Code), com acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA com specs por fase (SDD). Antes de cada fase,
+escrevi com ela uma spec com o objetivo, os requisitos, as tarefas e a verificação; as specs
+ficaram fora do repositório. A ferramenta implementava a fase inteira, rodava as verificações e
+parava. Eu revisava cada diff, tirava as dúvidas e pedia ajustes. Ela nunca criou branch, commit
+ou push nem mexeu no stage do git: isso tudo foi feito por mim. A exceção foi o `Dockerfile` da
+suíte de testes, que escrevi à mão.
+
+**Para que usei:**
+
+- Planejamento: o plano de trabalho do grupo, a partir do enunciado e do repositório da NP1, e
+  as specs da minha parte;
+- Código e testes: o esqueleto do `docker-compose.yml` e o `.env.example`, a imagem do Jenkins
+  (`jenkins/Dockerfile` e `plugins.txt`), o serviço `k6`, o anexo do `report.html` no
+  `scripts/notify_email.py` e os testes `test_email_attachment.py`, `test_compose_config.py` e
+  `test_compose_security.py`;
+- verificações: k6 pelo Compose, um Mailpit descartável para o anexo, provas de falha dos
+  testes de configuração e a integração final, com a esteira inteira num clone novo;
+- textos de PRs, a seção "Docker e Compose" e esta declaração.
+
+**Prompts** (resumidos):
+
+1. **Divisão do trabalho do grupo**
+
+   > "Consegue distribuir trabalhos igualmente entre os 4, para que os 4 consiga trabalhar em todo o projeto e o
+   > mesmo consiga ser entregue com todos os critérios dessa NP2 com excelência?"
+
+   **Resposta:** um plano com a divisão por integrante. A primeira versão criava uma API
+   própria, com FastAPI e PostgreSQL, para a esteira testar.
+
+   **Resultado:** descartado em parte. A API própria saiu quando o professor liberou usar a
+   suíte da NP1; a estrutura do plano foi aproveitada.
+
+2. **Implementação da Fase 2**
+
+   > "Estou te mandando os arquivos da fase 2 da minha spec, o plano de execução e o pdf de
+   > critérios da NP2 [...]. Poderia dar sequência nessa fase 2 seguindo estritamente os critérios?"
+
+   **Resposta:** a IA escreveu o serviço `k6` no perfil `perf`, o anexo do relatório no e-mail
+   e os testes da configuração do Compose. Rodou a carga e o estresse pelo Compose e quebrou
+   uma regra de cada vez, para provar que cada teste falha quando deve.
+
+   **Resultado:** aceito. Revisei os diffs, fiz os commits e abri os PRs #41 e #46.
+
+
+5. **Documentação antes da hora**
+
+   > "não precisa fazer a fase 3! Somente verificar sobre se tá tudo certo da fase 2"
+
+   **Resposta:** a IA tinha começado a escrever a seção "Docker e Compose" sem eu pedir. Ela
+   desfez o texto e conferiu os cinco itens da definição de pronto da Fase 2.
+
+   **Resultado:** descartado. A seção foi reescrita depois, mais curta, quando pedi.
+
+**O que fiz sem IA:**
+
+- escrevi à mão o `Dockerfile` da suíte de testes, a imagem do serviço `tests`;
+- criei as branches, fiz todos os commits e pushes e abri os PRs;
+- decidi a divisão do trabalho do grupo e fiquei com a parte de Docker;
+- decidi corrigir os dois pontos da revisão do Ian no PR #41, em vez de só responder;
+- juntei a `main` na minha branch, na minha máquina, antes de continuar o PR;
+- conferi na caixa de entrada os e-mails reais do build e abri o relatório anexado.
 
 ### Declaração individual — Gabriel Renato
 
