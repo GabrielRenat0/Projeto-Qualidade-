@@ -146,7 +146,7 @@ pytest --junitxml=reports/junit.xml
 ```
 
 É o mesmo comando do Jenkins e do container `tests`. Para rodar só os testes unitários, que
-não precisam de internet: `pytest -m unit`.
+não precisam de internet: `pytest -m unit --no-cov`.
 
 **Testes de performance (bônus):** o serviço `k6` não sobe com o `up`. Rode o `tests` uma vez
 antes, para criar o volume dos relatórios, e depois:
@@ -601,7 +601,8 @@ Todo build manda um e-mail com o resultado, com sucesso ou com falha. O e-mail s
 
 **Decisões:**
 
-- **Só biblioteca padrão:** o script usa só `smtplib`, `email` e `argparse`. O `post` roda com
+- **Só biblioteca padrão:** o script não depende de nenhum pacote do `requirements.txt`, só de
+  módulos da biblioteca padrão, como `smtplib`, `email` e `argparse`. O `post` roda com
   o `python3` do sistema, então o e-mail sai mesmo quando o Setup falhou antes de criar o venv.
 - **Nenhum e-mail fixo no código:** destinatários e remetente vêm só do `.env`. O
   `tests/unit/test_no_hardcoded_email.py` procura endereços no `Jenkinsfile`, em
