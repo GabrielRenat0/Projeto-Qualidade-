@@ -9,10 +9,10 @@ from html import escape
 import re
 
 TEST_CASE_GROUPS = {
-    "Integrante A": (1, 5),
-    "Integrante B": (6, 10),
-    "Integrante C": (11, 15),
-    "Integrante D": (16, 20),
+    "Fabio Henrique": (1, 5),
+    "Gabriel Renato": (6, 10),
+    "Gabriel Baldoni": (11, 15),
+    "Ian Romancini": (16, 20),
 }
 UNIT_GROUP = "Testes unitários"
 UNCLASSIFIED_GROUP = "Não classificado"

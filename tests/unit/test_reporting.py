@@ -23,14 +23,14 @@ INVALID_TESTS = "tests/test_invalid_data.py"
 @pytest.mark.parametrize(
     ("nodeid", "group"),
     [
-        (f"{VALID_TESTS}::test_tc001_list_all_posts", "Integrante A"),
-        (f"{VALID_TESTS}::test_tc005_get_user_with_nested_objects", "Integrante A"),
-        (f"{VALID_TESTS}::test_tc006_filter_completed_todos", "Integrante B"),
-        (f"{VALID_TESTS}::test_tc010_delete_post", "Integrante B"),
-        (f"{INVALID_TESTS}::test_tc011_get_post_outside_valid_id_range[0]", "Integrante C"),
-        (f"{INVALID_TESTS}::test_tc015_filter_comments_by_negative_post_id", "Integrante C"),
-        (f"{INVALID_TESTS}::test_tc016_create_empty_post", "Integrante D"),
-        (f"{INVALID_TESTS}::test_tc020_get_post_after_delete", "Integrante D"),
+        (f"{VALID_TESTS}::test_tc001_list_all_posts", "Fabio Henrique"),
+        (f"{VALID_TESTS}::test_tc005_get_user_with_nested_objects", "Fabio Henrique"),
+        (f"{VALID_TESTS}::test_tc006_filter_completed_todos", "Gabriel Renato"),
+        (f"{VALID_TESTS}::test_tc010_delete_post", "Gabriel Renato"),
+        (f"{INVALID_TESTS}::test_tc011_get_post_outside_valid_id_range[0]", "Gabriel Baldoni"),
+        (f"{INVALID_TESTS}::test_tc015_filter_comments_by_negative_post_id", "Gabriel Baldoni"),
+        (f"{INVALID_TESTS}::test_tc016_create_empty_post", "Ian Romancini"),
+        (f"{INVALID_TESTS}::test_tc020_get_post_after_delete", "Ian Romancini"),
     ],
 )
 def test_report_group_maps_each_test_case_to_its_integrante(nodeid, group):
@@ -39,7 +39,7 @@ def test_report_group_maps_each_test_case_to_its_integrante(nodeid, group):
 
 @pytest.mark.parametrize("test_case", ["TC-012", "tc_012", "Tc012"])
 def test_report_group_accepts_any_test_case_spelling(test_case):
-    assert report_group(f"{INVALID_TESTS}::test_{test_case}_check") == "Integrante C"
+    assert report_group(f"{INVALID_TESTS}::test_{test_case}_check") == "Gabriel Baldoni"
 
 
 def test_report_group_puts_every_unit_test_in_its_own_group():
@@ -69,7 +69,7 @@ def test_report_title_covers_the_test_cases_and_the_unit_tests():
 def test_group_cell_shows_the_group_of_the_test():
     cell = group_cell(f"{INVALID_TESTS}::test_tc013_get_nonexistent_route")
 
-    assert cell == '<td class="col-group">Integrante C</td>'
+    assert cell == '<td class="col-group">Gabriel Baldoni</td>'
 
 
 # ReportSummary
@@ -86,7 +86,7 @@ def test_report_summary_counts_each_outcome_per_group():
     summary.record(f"{VALID_TESTS}::test_tc003_filter_posts_by_user_id", "failed")
 
     assert summary.html_lines()[2] == (
-        "<li><strong>Integrante A</strong> — TC-001 a TC-005: "
+        "<li><strong>Fabio Henrique</strong> — TC-001 a TC-005: "
         "3 execuções (1 failed, 2 passed).</li>"
     )
 
@@ -99,8 +99,8 @@ def test_report_summary_lists_the_groups_in_report_order():
 
     lines = summary.html_lines()
 
-    assert lines[2].startswith("<li><strong>Integrante B</strong> — TC-006 a TC-010")
-    assert lines[3].startswith("<li><strong>Integrante D</strong> — TC-016 a TC-020")
+    assert lines[2].startswith("<li><strong>Gabriel Renato</strong> — TC-006 a TC-010")
+    assert lines[3].startswith("<li><strong>Ian Romancini</strong> — TC-016 a TC-020")
     assert lines[4] == (
         "<li><strong>Testes unitários</strong> — tests/unit: 1 execuções (1 passed).</li>"
     )
