@@ -390,6 +390,8 @@ Onde ver:
 | `tests/unit/test_email_attachment.py` | O anexo do `report.html` no e-mail: relatório presente, ausente, ilegível ou acima do limite de 10 MB |
 | `tests/unit/test_no_hardcoded_email.py` | Que nenhum e-mail real está fixo no pipeline: os destinatários vêm de `NOTIFY_EMAIL_TO` |
 | `tests/unit/test_jenkins_config.py` | A configuração do Jenkins: plugins com versão fixada, senhas só por variável em `jenkins/casc/` e o job `projeto-qualidade` com o parâmetro `BRANCH` |
+| `tests/unit/test_compose_config.py` | O `docker-compose.yml` contra o contrato: os 5 serviços e os 3 volumes, as portas 8080, 8025 e 8081, o `k6` só no perfil `perf`, o `tests` construído pelo `Dockerfile` local, o `jenkins` vindo da nossa imagem e o `jenkins` e o `tests` esperando o `mailpit` |
+| `tests/unit/test_compose_security.py` | As regras de segurança do Compose: imagens com versão fixa (nunca `latest`), só o `mailpit` com as variáveis do Gmail, nenhum `env_file` e nenhum serviço montando o `docker.sock` |
 
 Os testes de configuração leem os arquivos do pipeline (`Jenkinsfile`, `docker-compose.yml` e
 `jenkins/`). Se alguém quebrar o que o grupo combinou, por exemplo com um plugin sem versão ou uma
