@@ -1,7 +1,7 @@
 # Projeto Qualidade — Esteira DevOps da suíte de testes de API
 
-**Disciplina:** S07 - Gerência de Configuração e Evolução de Software  
-**Instituição:** INATEL  
+**Disciplina:** S07 - Gerência de Configuração e Evolução de Software
+**Instituição:** INATEL
 **Integrantes:**
 - Fabio Henrique
 - Gabriel Renato
@@ -29,37 +29,178 @@
 
 ## Descrição
 
-> Seção em construção. Responsável: Ian Romancini.
+Este projeto transforma a suíte de testes automatizados da NP1 numa esteira DevOps completa.
+A suíte testa a API pública [JSONPlaceholder](https://jsonplaceholder.typicode.com) com 20
+casos de teste (veja o [Histórico da NP1](#histórico-da-np1)). Na NP2, ela passa a rodar
+dentro de containers Docker e num pipeline do Jenkins, com gate de cobertura, pacote
+versionado, relatórios publicados e um e-mail com o resultado de cada build.
+
+Toda a infraestrutura sobe com um único `docker compose up -d` e é configurada como código: o
+Jenkins, o job, os plugins e as variáveis vêm do repositório e do `.env`, sem nenhum passo
+manual na interface.
+
+```
+GitHub ──> Jenkins ──> Setup ──> Test (gate 90%) ──> Build (pacote)
+                                     │                     │
+                                     └──── post: e-mail ───┘
+                                                 │
+                     tests ──> e-mail ──> mailpit ──> Gmail
+                       │
+                       └──> volume reports ──> nginx (http://localhost:8081)
+```
 
 ---
 
 ## Pré-requisitos
 
-> Seção em construção. Responsável: Ian Romancini.
+Para subir a esteira:
+
+- **Docker** com o **Docker Compose v2** (Docker Desktop no Windows e no Mac, ou Docker Engine
+  no Linux);
+- **Git**, para clonar o repositório;
+- uma **conta Gmail com senha de app**, usada pelo `mailpit` para repassar os e-mails. A
+  senha de app só aparece com a verificação em duas etapas ligada na conta;
+- as portas **8080** (Jenkins), **8081** (relatórios) e **8025** (Mailpit) livres na máquina.
+
+Para rodar a suíte fora dos containers, também é preciso o **Python 3.11** ou superior.
 
 ---
 
 ## Instalação
 
-> Seção em construção. Responsável: Ian Romancini.
+1. Clone o repositório:
+
+   ```bash
+   git clone https://github.com/GabrielRenat0/Projeto-Qualidade-.git
+   cd Projeto-Qualidade-
+   ```
+
+2. Crie o `.env` a partir do exemplo:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Preencha o `.env` com os valores reais. O arquivo nunca é commitado.
+
+   | Variável | O que é |
+   |---|---|
+   | `JENKINS_ADMIN_ID` e `JENKINS_ADMIN_PASSWORD` | Usuário e senha do admin do Jenkins, criados pelo `security.yaml` |
+   | `REPO_URL` | Repositório que o job do Jenkins clona |
+   | `NOTIFY_EMAIL_TO` | Quem recebe o e-mail do build; vários endereços vão separados por vírgula |
+   | `SMTP_HOST`, `SMTP_PORT`, `SMTP_STARTTLS` | Servidor que recebe o e-mail do script; no Compose, `mailpit`, `1025` e `false` |
+   | `SMTP_USER` e `SMTP_PASSWORD` | Login no servidor SMTP; vazios para o `mailpit`, que não pede login |
+   | `SMTP_FROM` | Remetente do e-mail; use o endereço da conta Gmail do projeto |
+   | `GMAIL_USER` e `GMAIL_APP_PASSWORD` | Conta Gmail e senha de app que o `mailpit` usa para repassar os e-mails |
+   | `API_BASE_URL` | Endereço da API testada; o padrão é o JSONPlaceholder |
+
+Para rodar a suíte fora dos containers, crie um ambiente virtual e instale as dependências:
+
+```bash
+python -m venv .venv
+# Windows:
+.venv\Scripts\activate
+# Linux/Mac:
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ---
 
 ## Execução
 
-> Seção em construção. Responsável: Ian Romancini.
+**Subir a esteira:**
+
+```bash
+docker compose up -d
+```
+
+Esse comando sobe o `jenkins`, o `mailpit` e o `reports`, que ficam no ar, e roda o `tests`
+uma vez. O `tests` executa a suíte, manda o e-mail com o resultado e termina com o código de
+saída do pytest. Para acompanhar:
+
+```bash
+docker compose ps -a
+docker compose logs -f tests
+```
+
+**Rodar a suíte de novo no container:**
+
+```bash
+docker compose run --rm tests
+```
+
+**Rodar o pipeline no Jenkins:**
+
+1. Abra http://localhost:8080 e entre com o `JENKINS_ADMIN_ID` e o `JENKINS_ADMIN_PASSWORD`
+   do `.env`.
+2. Abra o job **projeto-qualidade**, clique em **Build with Parameters** (em português,
+   **Construir com parâmetros**), informe a `BRANCH` e clique em **Build**.
+
+O job também verifica o GitHub a cada 5 minutos e roda sozinho quando há commit novo.
+
+**Rodar a suíte na máquina**, com o ambiente virtual ativo:
+
+```bash
+pytest --junitxml=reports/junit.xml
+```
+
+É o mesmo comando do Jenkins e do container `tests`. Para rodar só os testes unitários, que
+não precisam de internet: `pytest -m unit`.
+
+**Testes de performance (bônus):** o serviço `k6` não sobe com o `up`. Rode o `tests` uma vez
+antes, para criar o volume dos relatórios, e depois:
+
+```bash
+docker compose run --rm k6 run /perf/k6_load.js
+docker compose run --rm k6 run /perf/k6_stress.js
+```
+
+**Parar a esteira:**
+
+```bash
+docker compose down      # mantém os volumes: builds, relatórios e e-mails continuam lá
+docker compose down -v   # apaga também os volumes
+```
 
 ---
 
 ## Uso
 
-> Seção em construção. Responsável: Ian Romancini.
+Depois de um build, os resultados ficam em quatro lugares:
+
+| Onde | O que mostra |
+|---|---|
+| Jenkins, página do build (http://localhost:8080) | **Test Result** com os testes do JUnit e **Artifacts** com os relatórios (`reports/`) e o pacote (`dist/`) |
+| Relatórios (http://localhost:8081) | O relatório HTML do pytest, a cobertura em HTML e o `junit.xml`, gravados pelo container `tests` |
+| Mailpit (http://localhost:8025) | Uma cópia de cada e-mail enviado pela esteira |
+| Caixa de entrada do Gmail | O e-mail do build, repassado pelo `mailpit` |
+
+O e-mail traz o status no assunto, por exemplo `[SUCCESS] projeto-qualidade #7 (Jenkins)`. No
+corpo vêm o job, o build, a branch, o commit, a duração, o link do build, o total de testes e
+a cobertura, e o relatório HTML vai anexado. Os detalhes estão na seção [E-mail](#e-mail).
+
+O Jenkins e o Mailpit só abrem em `localhost`, porque mostram dados do pipeline.
 
 ---
 
 ## Funcionalidades
 
-> Seção em construção. Responsável: Ian Romancini.
+- **Suíte de testes da API:** os 20 casos de teste da NP1 contra o JSONPlaceholder, com dados
+  válidos e inválidos, mais os testes unitários do código do projeto e da configuração da
+  infraestrutura.
+- **Gate de cobertura:** o build falha se a cobertura do nosso código ficar abaixo de 90%.
+- **Pipeline do Jenkins:** etapas Setup, Test e Build, com o resultado dos testes no JUnit e os
+  relatórios e o pacote arquivados como artefatos.
+- **Jenkins como código:** imagem própria no Docker Hub, com plugins fixos e o admin, o job e
+  as configurações criados pelo Configuration as Code, sem passos manuais.
+- **Pacote versionado:** o Build gera o pacote da suíte (`python -m build`), com o fingerprint
+  registrado no Jenkins.
+- **Notificação por e-mail:** todo build, com sucesso ou falha, manda o resultado por e-mail,
+  com o relatório anexado. Os destinatários vêm de variável de ambiente.
+- **Relatórios publicados:** um servidor nginx mostra os relatórios de teste e de cobertura.
+- **Volumes persistentes:** builds, relatórios e e-mails sobrevivem a um `down` e `up`.
+- **Testes de performance (bônus):** testes de carga e de estresse com o k6.
 
 ---
 
@@ -305,13 +446,91 @@ Os TCs parametrizados (TC-002 e TC-011) geram 23 execuções no total.
 
 ## E-mail
 
-> Seção em construção. Responsável: Ian Romancini.
+Todo build manda um e-mail com o resultado, com sucesso ou com falha. O e-mail sai pelo script
+`scripts/notify_email.py` e passa pelo `mailpit`, que guarda uma cópia e repassa para o Gmail.
+
+**Caminho do e-mail:**
+
+```
+.env (NOTIFY_EMAIL_TO, SMTP_*) ──> Compose ──> jenkins / tests
+                                                   │
+                                      scripts/notify_email.py
+                                                   │  SMTP, porta 1025
+                                                   v
+                                   mailpit (cópia em http://localhost:8025)
+                                                   │  relay, porta 587 com STARTTLS
+                                                   v
+                                         Gmail ──> destinatários
+```
+
+**Quem chama o script:**
+
+- **Jenkins:** o `post { always { ... } }` do Jenkinsfile chama o script com o status do build
+  (`currentBuild.currentResult`) e a duração. Por ser `always`, o e-mail sai mesmo quando um
+  teste ou o Setup falha.
+- **Container `tests`:** depois do pytest, o comando do serviço chama o script com `SUCCESS` ou
+  `FAILURE` e termina com o código de saída da suíte, não o do e-mail.
+
+**O que o e-mail traz:**
+
+- **Assunto:** status, job, número do build e origem, por exemplo
+  `[FAILURE] projeto-qualidade #6 (Jenkins)`. A origem pode ser `Jenkins`, `tests container`
+  ou `local machine`.
+- **Corpo:** job, build, branch, commit, duração e link do build, quando existem, e o resumo
+  dos relatórios: total de testes (aprovados, falhos, erros e pulados) e a cobertura.
+- **Anexo:** o relatório HTML do pytest (`reports/report.html`), quando existe e tem até 10 MB.
+  Um build que falha antes dos testes manda o e-mail sem anexo, e o corpo avisa que o
+  relatório não foi gerado.
+
+**Códigos de saída do script:**
+
+| Código | Quando |
+|---|---|
+| `0` | E-mail enviado |
+| `1` | Falha no envio, por exemplo servidor fora do ar ou login recusado |
+| `2` | Configuração inválida (sem `NOTIFY_EMAIL_TO`, `SMTP_PORT` não numérica, sem remetente) ou falta do argumento `--status` |
+
+**Decisões:**
+
+- **Só biblioteca padrão:** o script usa só `smtplib`, `email` e `argparse`. O `post` roda com
+  o `python3` do sistema, então o e-mail sai mesmo quando o Setup falhou antes de criar o venv.
+- **Nenhum e-mail fixo no código:** destinatários e remetente vêm só do `.env`. O
+  `tests/unit/test_no_hardcoded_email.py` procura endereços no `Jenkinsfile`, em
+  `jenkins/casc/`, no `docker-compose.yml` e em `scripts/` e falha se achar algum que não seja
+  de exemplo, como `@example.com`.
+- **Senha do Gmail só no `mailpit`:** o `GMAIL_USER` e o `GMAIL_APP_PASSWORD` só chegam a esse
+  serviço. O Jenkins e o `tests` falam com o `mailpit` sem login, pela rede interna do
+  Compose, e nunca recebem a senha.
+- **Mailpit só em `localhost`:** a interface na porta 8025 não tem login e mostra todos os
+  e-mails, então só abre na própria máquina. A porta SMTP 1025 nem é publicada.
+
+**Testar o envio na mão**, com a esteira no ar:
+
+```bash
+docker compose run --rm tests python3 scripts/notify_email.py --status SUCCESS
+```
+
+O terminal mostra `notify_email: sent '[SUCCESS] ...' to N recipient(s)`. O e-mail aparece em
+http://localhost:8025 e chega na caixa de entrada. Os primeiros e-mails da conta podem cair
+no spam.
+
+Os testes unitários do script (`tests/unit/test_notify_email.py`, `test_email_attachment.py`
+e `test_email_report_summary.py`) usam um SMTP falso e rodam sem internet.
 
 ---
 
 ## Uso de IA
 
-> Tabela-resumo dos modelos usados pelo grupo em construção. Responsável: Ian Romancini.
+O grupo usou IA como apoio na NP2. A rubrica avalia honestidade e entendimento, então cada
+integrante declara abaixo o que usou, para quê, com prompts reais e o que fez sem IA. Ninguém
+commitou código gerado por IA que não saiba explicar.
+
+| Integrante | Ferramenta e modelo | Para que usou | Dinâmica |
+|---|---|---|---|
+| Fabio Henrique | Claude (Claude Code) — *modelo a confirmar* | Montagem do plano da NP2 (`PLANO_NP2.md`) a partir do enunciado e do repositório da NP1; *demais usos a confirmar* | *a confirmar* |
+| Gabriel Renato | *a confirmar* | *a confirmar* | *a confirmar* |
+| Gabriel Baldoni | *a confirmar* | *a confirmar* | *a confirmar* |
+| Ian Romancini | Claude Opus 5.5 (Claude Code) | Código e testes do e-mail (script, `mailpit`, `post` do Jenkinsfile, teste de e-mail fixo), `security.yaml`, diagnóstico do TC-018 e do build, revisão de PRs, documentação | Individual, em par com a ferramenta: ela escrevia, eu revisava, testava, pedia ajustes e aprovava cada commit |
 
 ### Declaração individual — Fabio Henrique
 
@@ -518,7 +737,89 @@ PRs, e revisei cada PR antes de pedir a revisão do grupo.
 
 ### Declaração individual — Ian Romancini
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5, pelo Claude Code, com acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA como par de programação. A maior parte do código
+da minha parte foi escrita por ela, sempre em etapas pequenas que eu pedia na ordem do plano.
+Em cada etapa, a ferramenta explicava o que tinha feito; eu revisava o código, tirava as
+dúvidas, testava na minha máquina e pedia ajustes quando algo não estava como eu queria. Só
+depois disso eu autorizava o commit. A parte operacional ficou comigo: a conta Gmail, o
+`.env`, o Docker, os testes manuais e os builds no Jenkins. Nada foi commitado, enviado ou
+mergeado sem a minha aprovação.
+
+**Para que usei:**
+
+- código e testes do `scripts/notify_email.py`, do serviço `mailpit`, do
+  `jenkins/casc/security.yaml`, do e-mail no `post` do Jenkinsfile e do
+  `tests/unit/test_no_hardcoded_email.py`;
+- diagnóstico do TC-018 e de erros no build do Jenkins;
+- revisão dos PRs em que fui marcado;
+- escrita desta seção.
+
+**Prompts** (resumidos):
+
+1. **TC-018 falhando**
+
+   > "o teste 18 está dando erro, imagino que a ferramenta tenha atualizado, não retorna mais
+   > o 500, confirma pra mim se faz sentido a ferramenta ter atualizado mesmo."
+
+   **Resposta:** a IA confirmou a minha hipótese. O JSONPlaceholder passou a responder 404 em
+   vez de 500 ao atualizar um post que não existe.
+
+   **Resultado:** aceito. Ajustamos o teste e o Plano de Testes (PR #24).
+
+2. **Build do Jenkins com erro**
+
+   > "o build não rodou, me ajude a entender o que eu fiz de errado"
+
+   **Resposta:** o problema era o `SMTP_FROM` no `.env`, e o container do Jenkins precisava
+   ser recriado para ler o valor novo.
+
+   **Resultado:** aceito. Eu corrigi o `.env` e rodei o build de novo.
+
+3. **Conferência do envio**
+
+   > "Corrigi o ENV, e agora rodou, e os emails chegaram, confere se está certo"
+
+   **Resposta:** a IA conferiu o log do build e confirmou que ele passou corretamente.
+
+   **Resultado:** aceito. Os e-mails chegaram na caixa de entrada.
+
+4. **Commit sem autorização**
+
+   > "antes de dar commit me pergunta se pode, você criou uma branch pra isso?"
+
+   **Resposta:** a ferramenta tinha feito o primeiro commit do script sem me perguntar. Ela
+   confirmou que o trabalho estava numa branch própria e passou a pedir autorização antes de
+   cada commit.
+
+   **Resultado:** ajustado. A partir daí, todo commit, branch e push passou pela minha
+   aprovação.
+
+5. **Revisão do PR #41**
+
+   > "não aprova ainda, só confere se está certo" e, depois, "faz um texto pequeno explicando
+   > o erro", "menos técnico, pareça mais humano"
+
+   **Resposta:** a revisão mostrou que juntar os PRs #39, #40 e #41 quebrava 2 testes, porque
+   o anexo do relatório transforma a mensagem em multipart. A primeira explicação para o
+   colega veio técnica demais.
+
+   **Resultado:** descartado. Não deixei o PR ser aprovado antes de conferir, descartei o
+   primeiro texto e mandei uma versão mais simples.
+
+**O que fiz sem IA:**
+
+- criei a conta Gmail do projeto e a senha de app;
+- preenchi o `.env` local (que não é versionado);
+- rodei os testes manuais do script e conferi os e-mails na caixa de entrada;
+- operei o Docker Desktop e o Jenkins (builds, parâmetros e a prova de falha);
+- percebi que o TC-018 não batia mais com o comportamento da API, levantei a hipótese da
+  mudança e pedi a correção do teste;
+- barrei a aprovação do PR #41 e pedi a verificação que achou os 2 testes quebrados na junção
+  dos PRs;
+- ajustei à mão o texto de alguns PRs, escolhi os revisores e tomei as decisões de aprovar e
+  mergear.
 
 ---
 
@@ -531,7 +832,7 @@ Plano de Testes da NP1 está em [`docs/np1/`](docs/np1/), com o PDF montado em
 
 ### Descrição do SUT (System Under Test)
 
-O sistema testado (SUT) é o **JSONPlaceholder** (https://jsonplaceholder.typicode.com). 
+O sistema testado (SUT) é o **JSONPlaceholder** (https://jsonplaceholder.typicode.com).
 Trata-se de uma API REST pública e gratuita que simula um backend real com rotas de um blog (posts, comentários, usuários, tarefas, etc.). A API foi escolhida por permitir a realização de requisições reais (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`) de forma consistente e sem a necessidade de autenticação.
 
 Os recursos cobertos pela nossa suíte de testes incluem:
