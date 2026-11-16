@@ -440,7 +440,114 @@ Os TCs parametrizados (TC-002 e TC-011) geram 23 execuções no total.
 
 ## Docker e Compose
 
-> Seção em construção. Responsável: Fabio Henrique.
+O `docker-compose.yml` descreve a esteira inteira: cinco serviços, três volumes e uma rede
+interna. Só o Docker precisa estar instalado na máquina.
+
+### Serviços
+
+| Serviço | Imagem | Porta | Volume | Para que serve |
+|---|---|---|---|---|
+| `jenkins` | `baldonigabriel/projeto-qualidade-jenkins:1.0.0`, a nossa imagem no Docker Hub | 8080, só em `localhost` | `jenkins_home` | Roda o pipeline |
+| `tests` | Construída na máquina, pelo `Dockerfile` da raiz | Nenhuma | `reports` | Roda a suíte uma vez, manda o e-mail e encerra |
+| `reports` | `nginx:1.30.6-alpine` | 8081 | `reports`, só para leitura | Mostra os relatórios no navegador |
+| `mailpit` | `axllent/mailpit:v1.32.0` | 8025, só em `localhost` | `mailpit_data` | Guarda uma cópia de cada e-mail e repassa para o Gmail |
+| `k6` (bônus) | `grafana/k6:2.2.0` | Nenhuma | `reports` | Testes de carga e de estresse; só roda quando chamado |
+
+Toda imagem tem tag fixa. Os serviços se encontram pelo nome, na rede do Compose: o e-mail vai
+para `mailpit:1025`, uma porta que nem é publicada na máquina.
+
+### Como subir
+
+```powershell
+Copy-Item .env.example .env   
+```
+
+```bash
+cp .env.example .env          
+```
+
+Preencha o `.env` (a tabela de variáveis está em [Instalação](#instalação)) e suba:
+
+```bash
+docker compose up -d
+docker compose ps -a
+```
+
+O `ps -a` deve mostrar o `jenkins`, o `mailpit` e o `reports` como `Up` e o `tests` como
+`Exited (0)`. Isso é o esperado: o `tests` é um job, que roda a suíte, manda o e-mail e termina
+com o código de saída do pytest. Depois de um `git pull`, suba com
+`docker compose up -d --build`, para reconstruir a imagem do `tests`.
+
+### Rodar só a suíte
+
+```bash
+docker compose run --rm tests                          
+docker compose run --rm tests pytest -m unit --no-cov  
+```
+
+Os relatórios vão para o volume `reports` e aparecem em http://localhost:8081: `report.html`,
+`coverage/`, `junit.xml` e `coverage.xml`.
+
+### Volumes
+
+| Volume | O que guarda |
+|---|---|
+| `jenkins_home` | Histórico de builds, artefatos e plugins |
+| `reports` | Relatórios do `tests` e do `k6` |
+| `mailpit_data` | A cópia de cada e-mail |
+
+```bash
+docker compose down      
+docker compose down -v   
+```
+
+Depois de um `down` e de um novo `up -d`, os builds, os e-mails e os relatórios continuam lá.
+
+### Imagens
+
+| | Suíte (`Dockerfile`) | Jenkins (`jenkins/Dockerfile`) |
+|---|---|---|
+| Base | `python:3.13.18-slim` | `jenkins/jenkins:2.580.2-lts-jdk21` |
+| O que instala | O `requirements.txt` e o repositório inteiro | Python 3 com `venv`, os plugins do `plugins.txt` e a configuração de `jenkins/casc/` |
+| Usuário | `tester` (UID 1000), sem root | `jenkins`, sem root |
+| De onde vem | `docker compose build tests` | Docker Hub (veja [Imagem no Docker Hub](#imagem-no-docker-hub)) |
+
+As duas usam o Python 3.13 (3.13.18 na suíte e 3.13.5 no Jenkins), para o que passa no
+container `tests` passar também no stage Test. A imagem da suíte copia o repositório inteiro
+porque os testes de configuração leem o `docker-compose.yml`, o `Jenkinsfile` e a pasta
+`jenkins/`; o `.dockerignore` deixa de fora o `.git`, o `.venv` e o `.env`.
+
+### k6 (bônus)
+
+Rode o `tests` uma vez antes, porque é ele que cria o volume `reports` com o dono certo:
+
+```bash
+docker compose run --rm -e K6_WEB_DASHBOARD_EXPORT=/reports/k6_load.html k6 run /perf/k6_load.js
+docker compose run --rm -e K6_WEB_DASHBOARD_EXPORT=/reports/k6_stress.html k6 run /perf/k6_stress.js
+```
+
+O teste de carga usa 10 usuários por 30 segundos, e o de estresse sobe até 30 usuários, em 1
+minuto no total. O resumo sai no terminal, e o painel (`k6_load.html` e `k6_stress.html`) e o
+resumo em JSON ficam em http://localhost:8081.
+
+### Segurança
+
+Os segredos ficam só no `.env`, o `GMAIL_USER` e o `GMAIL_APP_PASSWORD` chegam só ao `mailpit`,
+e nenhum serviço monta o `docker.sock`. O `tests/unit/test_compose_config.py` e o
+`test_compose_security.py` leem o `docker-compose.yml` e fazem o stage Test falhar se uma dessas
+regras for quebrada, se uma tag virar `latest` ou se um serviço, porta ou volume mudar.
+
+### Problemas comuns
+
+| Sintoma | Causa | Saída |
+|---|---|---|
+| Porta já em uso ao subir | Outro programa usa a 8080, a 8081 ou a 8025 | Feche o programa e suba de novo |
+| `mailpit` reiniciando sem parar | `GMAIL_USER` ou `GMAIL_APP_PASSWORD` vazios | Preencha os dois e rode `docker compose up -d` |
+| E-mail aparece no 8025, mas não chega no Gmail | Senha de app errada, ou a mensagem caiu no spam | Confira o `GMAIL_*`, o spam e `docker compose logs mailpit` |
+| Mudei o `.env` e nada mudou | O container ainda tem os valores antigos | `docker compose up -d` de novo; o `restart` não relê o `.env` |
+| `tests` roda código antigo depois de um `git pull` | A imagem não foi reconstruída | `docker compose up -d --build` |
+| `k6: cannot write to /reports` | O volume foi criado pelo `k6`, antes do `tests` | `docker compose run --rm tests` e rode o `k6` de novo |
+| `tests` falha com `PermissionError` em `reports/` | O volume `reports` pertence ao root | `docker compose down`, `docker volume rm projeto-qualidade_reports` e `docker compose up -d` |
 
 ---
 
@@ -527,14 +634,77 @@ commitou código gerado por IA que não saiba explicar.
 
 | Integrante | Ferramenta e modelo | Para que usou | Dinâmica |
 |---|---|---|---|
-| Fabio Henrique | Claude (Claude Code) — *modelo a confirmar* | Montagem do plano da NP2 (`PLANO_NP2.md`) a partir do enunciado e do repositório da NP1; *demais usos a confirmar* | *a confirmar* |
+| Fabio Henrique | Claude Opus 5.5 e Claude Fable 5.2 (Claude Code) | Plano de trabalho do grupo e specs por fase; esqueleto do Compose, imagem do Jenkins, serviço `k6`, anexo do relatório no e-mail e testes da configuração do Compose; verificações e documentação | Specs por fase: a ferramenta implementava a fase e parava; eu revisava cada diff e fazia os commits. O `Dockerfile` da suíte eu escrevi à mão |
 | Gabriel Renato | *a confirmar* | *a confirmar* | *a confirmar* |
 | Gabriel Baldoni | *a confirmar* | *a confirmar* | *a confirmar* |
 | Ian Romancini | Claude Opus 5.5 (Claude Code) | Código e testes do e-mail (script, `mailpit`, `post` do Jenkinsfile, teste de e-mail fixo), `security.yaml`, diagnóstico do TC-018 e do build, revisão de PRs, documentação | Individual, em par com a ferramenta: ela escrevia, eu revisava, testava, pedia ajustes e aprovava cada commit |
 
 ### Declaração individual — Fabio Henrique
 
-> Em construção.
+**Ferramenta:** Claude Opus 5.5 e Claude Fable 5.2, os dois com effort High, pelo Claude Code
+(extensão do VS Code), com acesso ao repositório local.
+
+**Como trabalhei com a ferramenta:** usei a IA com specs por fase (SDD). Antes de cada fase,
+escrevi com ela uma spec com o objetivo, os requisitos, as tarefas e a verificação; as specs
+ficaram fora do repositório. A ferramenta implementava a fase inteira, rodava as verificações e
+parava. Eu revisava cada diff, tirava as dúvidas e pedia ajustes. Ela nunca criou branch, commit
+ou push nem mexeu no stage do git: isso tudo foi feito por mim. A exceção foi o `Dockerfile` da
+suíte de testes, que escrevi à mão.
+
+**Para que usei:**
+
+- Planejamento: o plano de trabalho do grupo, a partir do enunciado e do repositório da NP1, e
+  as specs da minha parte;
+- Código e testes: o esqueleto do `docker-compose.yml` e o `.env.example`, a imagem do Jenkins
+  (`jenkins/Dockerfile` e `plugins.txt`), o serviço `k6`, o anexo do `report.html` no
+  `scripts/notify_email.py` e os testes `test_email_attachment.py`, `test_compose_config.py` e
+  `test_compose_security.py`;
+- verificações: k6 pelo Compose, um Mailpit descartável para o anexo, provas de falha dos
+  testes de configuração e a integração final, com a esteira inteira num clone novo;
+- textos de PRs, a seção "Docker e Compose" e esta declaração.
+
+**Prompts** (resumidos):
+
+1. **Divisão do trabalho do grupo**
+
+   > "Consegue distribuir trabalhos igualmente entre os 4, para que os 4 consiga trabalhar em todo o projeto e o
+   > mesmo consiga ser entregue com todos os critérios dessa NP2 com excelência?"
+
+   **Resposta:** um plano com a divisão por integrante. A primeira versão criava uma API
+   própria, com FastAPI e PostgreSQL, para a esteira testar.
+
+   **Resultado:** descartado em parte. A API própria saiu quando o professor liberou usar a
+   suíte da NP1; a estrutura do plano foi aproveitada.
+
+2. **Implementação da Fase 2**
+
+   > "Estou te mandando os arquivos da fase 2 da minha spec, o plano de execução e o pdf de
+   > critérios da NP2 [...]. Poderia dar sequência nessa fase 2 seguindo estritamente os critérios?"
+
+   **Resposta:** a IA escreveu o serviço `k6` no perfil `perf`, o anexo do relatório no e-mail
+   e os testes da configuração do Compose. Rodou a carga e o estresse pelo Compose e quebrou
+   uma regra de cada vez, para provar que cada teste falha quando deve.
+
+   **Resultado:** aceito. Revisei os diffs, fiz os commits e abri os PRs #41 e #46.
+
+
+5. **Documentação antes da hora**
+
+   > "não precisa fazer a fase 3! Somente verificar sobre se tá tudo certo da fase 2"
+
+   **Resposta:** a IA tinha começado a escrever a seção "Docker e Compose" sem eu pedir. Ela
+   desfez o texto e conferiu os cinco itens da definição de pronto da Fase 2.
+
+   **Resultado:** descartado. A seção foi reescrita depois, mais curta, quando pedi.
+
+**O que fiz sem IA:**
+
+- escrevi à mão o `Dockerfile` da suíte de testes, a imagem do serviço `tests`;
+- criei as branches, fiz todos os commits e pushes e abri os PRs;
+- decidi a divisão do trabalho do grupo e fiquei com a parte de Docker;
+- decidi corrigir os dois pontos da revisão do Ian no PR #41, em vez de só responder;
+- juntei a `main` na minha branch, na minha máquina, antes de continuar o PR;
+- conferi na caixa de entrada os e-mails reais do build e abri o relatório anexado.
 
 ### Declaração individual — Gabriel Renato
 
